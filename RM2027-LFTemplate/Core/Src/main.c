@@ -28,10 +28,13 @@
 #include "usart.h"
 #include "usb_device.h"
 #include "gpio.h"
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "dvc_bsp.h"
+<<<<<<< HEAD
+#include "app_motor.h"
+=======
+>>>>>>> upstream/main
 #include "remote_control.h"
 /* USER CODE END Includes */
 
@@ -75,6 +78,9 @@ void MX_FREERTOS_Init(void);
   * @retval int
   */
 int main(void)
+
+
+
 {
 
   /* USER CODE BEGIN 1 */
@@ -130,6 +136,10 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   bspInit();
+<<<<<<< HEAD
+  Motor_Init();
+=======
+>>>>>>> upstream/main
   remote_control_init();
   /* USER CODE END 2 */
 
@@ -140,7 +150,6 @@ int main(void)
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)

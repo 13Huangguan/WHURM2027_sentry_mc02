@@ -77,6 +77,9 @@ COMPILERFLAGS += -Wmissing-field-initializers		# Warn about missing field initia
 
 COMPILERFLAGS += -Wno-unused-parameter				# Disable warning about unused parameters
 COMPILERFLAGS += -Wno-unused-const-variable			# Disable warning about unused const variables
+# GCC 14+ promotes incompatible pointer types to an error by default.
+# CMSIS-RTOS v1 task prototypes trip this; keep it as a warning.
+COMPILERFLAGS += -Wno-error=incompatible-pointer-types
 
 COMPILERFLAGS += -fdiagnostics-color=auto			# Enable colored diagnostics
 

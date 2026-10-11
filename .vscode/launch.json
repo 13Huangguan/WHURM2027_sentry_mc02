@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "emberprobe",
+      "request": "launch",
+      "name": "EmberProbe: Launch (RM2027-LFTemplate)",
+      "cwd": "${workspaceFolder}/RM2027-LFTemplate",
+      "executable": "${workspaceFolder}/RM2027-LFTemplate/build/LuojiaFox_H7_Template.elf",
+      "runToEntryPoint": "main"
+    }
+  ]
+}

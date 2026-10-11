@@ -80,11 +80,21 @@ static void Et08aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
 
 //remote control data 
 //遥控器控制变量
+<<<<<<< HEAD
+RC_ctrl_t g_rc_ctrl;
+Sbus_t sbus = {.connect_flag = 0xFF};
+
+// 接收原始数据，为18个字节，给了36个字节长度，防止DMA传输越界
+// D-Cache 行大小为 32 字节，两个 DMA 缓冲区分别按 32 字节对齐，避免无效化缓存时越界
+#define SBUS_DMA_BUF_STRIDE 64u
+static uint8_t sbus_rx_buf[2][SBUS_DMA_BUF_STRIDE] __attribute__((aligned(32)));
+=======
 RC_ctrl_t rc_ctrl;
 Sbus_t sbus = {.connect_flag = 0xFF};
 
 //接收原始数据，为18个字节，给了36个字节长度，防止DMA传输越界
 static uint8_t sbus_rx_buf[2][SBUS_RX_BUF_NUM];
+>>>>>>> upstream/main
 
 // 上一次接收数据的时间
 static uint32_t last_receive_time = 0;
@@ -131,7 +141,11 @@ void remote_control_init(void)
   */
 const RC_ctrl_t *get_remote_control_point(void)
 {
+<<<<<<< HEAD
+    return &g_rc_ctrl;
+=======
     return &rc_ctrl;
+>>>>>>> upstream/main
 }
 
 /**
@@ -148,6 +162,29 @@ const Sbus_t *get_sbus_point(void)
 uint8_t RC_data_is_error(void)
 {
     //使用了go to语句 方便出错统一处理遥控器变量数据归零
+<<<<<<< HEAD
+    if (RC_abs(g_rc_ctrl.rc.ch[0]) > RC_CHANNAL_ERROR_VALUE)
+    {
+        goto error;
+    }
+    if (RC_abs(g_rc_ctrl.rc.ch[1]) > RC_CHANNAL_ERROR_VALUE)
+    {
+        goto error;
+    }
+    if (RC_abs(g_rc_ctrl.rc.ch[2]) > RC_CHANNAL_ERROR_VALUE)
+    {
+        goto error;
+    }
+    if (RC_abs(g_rc_ctrl.rc.ch[3]) > RC_CHANNAL_ERROR_VALUE)
+    {
+        goto error;
+    }
+    if (g_rc_ctrl.rc.s[0] == 0)
+    {
+        goto error;
+    }
+    if (g_rc_ctrl.rc.s[1] == 0)
+=======
     if (RC_abs(rc_ctrl.rc.ch[0]) > RC_CHANNAL_ERROR_VALUE)
     {
         goto error;
@@ -169,12 +206,28 @@ uint8_t RC_data_is_error(void)
         goto error;
     }
     if (rc_ctrl.rc.s[1] == 0)
+>>>>>>> upstream/main
     {
         goto error;
     }
     return 0;
 
 error:
+<<<<<<< HEAD
+    g_rc_ctrl.rc.ch[0] = 0;
+    g_rc_ctrl.rc.ch[1] = 0;
+    g_rc_ctrl.rc.ch[2] = 0;
+    g_rc_ctrl.rc.ch[3] = 0;
+    g_rc_ctrl.rc.ch[4] = 0;
+    g_rc_ctrl.rc.s[0] = RC_SW_DOWN;
+    g_rc_ctrl.rc.s[1] = RC_SW_DOWN;
+    g_rc_ctrl.mouse.x = 0;
+    g_rc_ctrl.mouse.y = 0;
+    g_rc_ctrl.mouse.z = 0;
+    g_rc_ctrl.mouse.press_l = 0;
+    g_rc_ctrl.mouse.press_r = 0;
+    g_rc_ctrl.key.v = 0;
+=======
     rc_ctrl.rc.ch[0] = 0;
     rc_ctrl.rc.ch[1] = 0;
     rc_ctrl.rc.ch[2] = 0;
@@ -188,6 +241,7 @@ error:
     rc_ctrl.mouse.press_l = 0;
     rc_ctrl.mouse.press_r = 0;
     rc_ctrl.key.v = 0;
+>>>>>>> upstream/main
     return 1;
 }
 
@@ -253,7 +307,11 @@ void UART5_IRQHandler(void)
             if(this_time_rx_len == RC_FRAME_LENGTH)
             {
                 //处理遥控器数据
+<<<<<<< HEAD
+                sbus_to_rc(sbus_rx_buf[0], &g_rc_ctrl);
+=======
                 sbus_to_rc(sbus_rx_buf[0], &rc_ctrl);
+>>>>>>> upstream/main
                 
                 COUNT_RECEIVED
                 
@@ -266,11 +324,19 @@ void UART5_IRQHandler(void)
             {
                 //处理遥控器数据
 #if (__RC_TYPE == RC_AT9S_PRO)
+<<<<<<< HEAD
+                At9sProSbusToRc(sbus_rx_buf[0], &g_rc_ctrl);
+#elif (__RC_TYPE == RC_HT8A)
+                Ht8aSbusToRc(sbus_rx_buf[0], &g_rc_ctrl);
+#elif (__RC_TYPE == RC_ET08A)
+                Et08aSbusToRc(sbus_rx_buf[0], &g_rc_ctrl);
+=======
                 At9sProSbusToRc(sbus_rx_buf[0], &rc_ctrl);
 #elif (__RC_TYPE == RC_HT8A)
                 Ht8aSbusToRc(sbus_rx_buf[0], &rc_ctrl);
 #elif (__RC_TYPE == RC_ET08A)
                 Et08aSbusToRc(sbus_rx_buf[0], &rc_ctrl);
+>>>>>>> upstream/main
 #endif
                 
                 COUNT_RECEIVED
@@ -309,7 +375,11 @@ void UART5_IRQHandler(void)
             {
                 
                 //处理遥控器数据
+<<<<<<< HEAD
+                sbus_to_rc(sbus_rx_buf[1], &g_rc_ctrl);
+=======
                 sbus_to_rc(sbus_rx_buf[1], &rc_ctrl);
+>>>>>>> upstream/main
                 
                 COUNT_RECEIVED
 
@@ -322,11 +392,19 @@ void UART5_IRQHandler(void)
             {
                 //处理遥控器数据
 #if (__RC_TYPE == RC_AT9S_PRO)
+<<<<<<< HEAD
+                    At9sProSbusToRc(sbus_rx_buf[1], &g_rc_ctrl);
+#elif (__RC_TYPE == RC_HT8A)
+                    Ht8aSbusToRc(sbus_rx_buf[1], &g_rc_ctrl);
+#elif (__RC_TYPE == RC_ET08A)
+                Et08aSbusToRc(sbus_rx_buf[1], &g_rc_ctrl);
+=======
                     At9sProSbusToRc(sbus_rx_buf[1], &rc_ctrl);
 #elif (__RC_TYPE == RC_HT8A)
                     Ht8aSbusToRc(sbus_rx_buf[1], &rc_ctrl);
 #elif (__RC_TYPE == RC_ET08A)
                 Et08aSbusToRc(sbus_rx_buf[1], &rc_ctrl);
+>>>>>>> upstream/main
 #endif
                 
                 COUNT_RECEIVED
@@ -537,10 +615,15 @@ static void Et08aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl){
     rc_ctrl->rc.ch[3] =  (sbus.ch[2] - ET08A_RC_CH_VALUE_OFFSET) / 671.0f * 660;
 
     static char sw_mapping[3] = {RC_SW_UP, RC_SW_MID, RC_SW_DOWN};
+<<<<<<< HEAD
+    rc_ctrl->rc.s[0] = sw_mapping[(sbus.ch[5] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
+    rc_ctrl->rc.s[1] = sw_mapping[(sbus.ch[4] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
+=======
     rc_ctrl->rc.s[0] = sw_mapping[(sbus.ch[4] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
     rc_ctrl->rc.s[1] = sw_mapping[(sbus.ch[5] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
     rc_ctrl->rc.s[2] = sw_mapping[(sbus.ch[6] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
     rc_ctrl->rc.s[3] = sw_mapping[(sbus.ch[7] - ET08A_RC_CH_VALUE_OFFSET) / 670 + 1];
+>>>>>>> upstream/main
     }
 
     // ET08A 遥控器没有鼠标和键盘数据
@@ -592,6 +675,18 @@ static void Et08aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl){
   * @brief          获取遥控器是否离线。
   * @retval         true:离线，false:在线
   */
+<<<<<<< HEAD
+bool GetRcOffline(void)
+{
+    bool sbus_lost = false;
+
+    if (__RC_TYPE != RC_DT7) {
+        sbus_lost = (sbus_lost_count > SBUS_MAX_LOST_NUN);
+    }
+
+    return !((receive_count > 5) && (HAL_GetTick() - last_receive_time < RC_LOST_TIME)) ||
+           sbus_lost;
+=======
 inline bool GetRcOffline(void)
 {
 #if __RC_TYPE == RC_DT7
@@ -610,6 +705,7 @@ inline bool GetRcOffline(void)
 #endif
 
 #undef USE_SBUS_LOST_COUNT
+>>>>>>> upstream/main
 }
 
 /**
@@ -617,18 +713,37 @@ inline bool GetRcOffline(void)
   * @param[in]      ch 通道id，0-右平, 1-右竖, 2-左平, 3-左竖, 4-左滚轮，配合ch id宏进行使用
   * @retval         DT7遥控器通道值，范围为 [−1,1]
   */
+<<<<<<< HEAD
+float GetDt7RcCh(uint8_t ch) { return g_rc_ctrl.rc.ch[ch] * RC_TO_ONE; }
+=======
 inline float GetDt7RcCh(uint8_t ch) { return rc_ctrl.rc.ch[ch] * RC_TO_ONE; }
+>>>>>>> upstream/main
 /**
   * @brief          获取DT7遥控器拨杆值，可配合switch_is_xxx系列宏函数使用。
   * @param[in]      sw 通道id，0-右, 1-左，配合sw id宏进行使用
   * @retval         DT7遥控器拨杆值，范围为{1,2,3}
   */
+<<<<<<< HEAD
+char GetDt7RcSw(uint8_t sw) { return g_rc_ctrl.rc.s[sw]; }
+=======
 inline char GetDt7RcSw(uint8_t sw) { return rc_ctrl.rc.s[sw]; }
+>>>>>>> upstream/main
 /**
   * @brief          获取鼠标axis轴的移动速度
   * @param[in]      axis 轴id, 0-, 1-, 2-，配合轴id宏进行使用
   * @retval         鼠标axis轴移动速度，范围为[,]
   */
+<<<<<<< HEAD
+float GetDt7MouseSpeed(uint8_t axis)
+{
+    switch (axis) {
+        case AX_X:
+            return g_rc_ctrl.mouse.x;
+        case AX_Y:
+            return g_rc_ctrl.mouse.y;
+        case AX_Z:
+            return g_rc_ctrl.mouse.z;
+=======
 inline float GetDt7MouseSpeed(uint8_t axis)
 {
     switch (axis) {
@@ -638,6 +753,7 @@ inline float GetDt7MouseSpeed(uint8_t axis)
             return rc_ctrl.mouse.y;
         case AX_Z:
             return rc_ctrl.mouse.z;
+>>>>>>> upstream/main
         default:
             return 0;
     }
@@ -647,6 +763,15 @@ inline float GetDt7MouseSpeed(uint8_t axis)
   * @param[in]      key 按键id，配合按键id宏进行使用
   * @retval         鼠标按键是否被按下
   */
+<<<<<<< HEAD
+bool GetDt7Mouse(uint8_t key)
+{
+    switch (key) {
+        case KEY_LEFT:
+            return g_rc_ctrl.mouse.press_l;
+        case KEY_RIGHT:
+            return g_rc_ctrl.mouse.press_r;
+=======
 inline bool GetDt7Mouse(uint8_t key)
 {
     switch (key) {
@@ -654,6 +779,7 @@ inline bool GetDt7Mouse(uint8_t key)
             return rc_ctrl.mouse.press_l;
         case KEY_RIGHT:
             return rc_ctrl.mouse.press_r;
+>>>>>>> upstream/main
         default:
             return 0;
     }
@@ -663,5 +789,9 @@ inline bool GetDt7Mouse(uint8_t key)
   * @param[in]      key 按键id，配合按键id宏进行使用
   * @retval         键盘按键是否被按下
   */
+<<<<<<< HEAD
+bool GetDt7Keyboard(uint8_t key) { return g_rc_ctrl.key.v & ((uint16_t)1 << key); }
+=======
 inline bool GetDt7Keyboard(uint8_t key) { return rc_ctrl.key.v & ((uint16_t)1 << key); }
+>>>>>>> upstream/main
 /*------------------------------ End of File ------------------------------*/
