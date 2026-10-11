@@ -432,6 +432,11 @@ void DMA1_Stream7_IRQHandler(void)
   /* USER CODE END DMA1_Stream7_IRQn 1 */
 }
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> upstream/main
 /**
   * @brief This function handles DMA2 stream0 global interrupt.
   */

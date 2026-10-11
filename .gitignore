@@ -2,37 +2,12 @@
 *(*)*
 
 # MATLAB files
-application/chassis/matlab_balance/slprj/
 */slprj/
 */codegen/
 *.prj
 
-# Keil v5 files
-*.bak
-*.lst
-*.lnp
-*.obj
-*.tmp
-*.TMP
-*.__i
-*.crf
-*.o
-*.d
-*.axf
-*.dep
-*.uvopt
-*.htm
-*.hsc
-~*
-*.map
-*uvgui*
-*.uvoptx
-*.sct
-*JLinkLog.txt
-*.dbgconf
-.vscode/tags
-*.hex
-*.lnk
+# build files
+build/
 
 *.scvd
 *.iex

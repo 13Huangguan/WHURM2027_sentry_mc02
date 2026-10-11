@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "C_Cpp.default.compilerPath": "C:/msys64/ucrt64/bin/arm-none-eabi-gcc.exe",
   "C_Cpp.default.cStandard": "gnu11",
   "C_Cpp.default.cppStandard": "gnu++14",
@@ -12,3 +13,8 @@
   "emberprobe.gdbPath": "C:\\msys64\\mingw64\\bin\\gdb-multiarch.exe",
   "emberprobe.objdumpPath": "C:\\msys64\\ucrt64\\bin\\arm-none-eabi-objdump.exe"
 }
+=======
+    "emberprobe.openocdPath": "c:\\Users\\penguin\\AppData\\Roaming\\Code\\User\\globalStorage\\bakesheep.emberprobe\\emberprobe\\openocd\\bin\\openocd.exe",
+    "emberprobe.sampleFrequencyHz": 30
+}
+>>>>>>> upstream/main

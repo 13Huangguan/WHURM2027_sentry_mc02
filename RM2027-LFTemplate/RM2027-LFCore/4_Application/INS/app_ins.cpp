@@ -20,6 +20,7 @@
 #include "tim.h"
 #include "Quaternion.h"
 #include "Config.h"
+#include "LF.hpp"
 
 /**
   * @brief the structure that contains the information for the INS.
@@ -131,6 +132,15 @@ void INS_Task(void const * argument)
     INS_Info.Pitch_Gyro = INS_Info.Gyro[IMU_GYRO_INDEX_PITCH]*RadiansToDegrees;
     INS_Info.Yaw_Gyro   = INS_Info.Gyro[IMU_GYRO_INDEX_YAW]*RadiansToDegrees;
     INS_Info.Roll_Gyro  = INS_Info.Gyro[IMU_GYRO_INDEX_ROLL]*RadiansToDegrees;
+
+    LuojiaFox::system_state.UpdateImu({
+      INS_Info.Yaw_Angle,
+      INS_Info.Pitch_Angle,
+      INS_Info.Roll_Angle,
+      INS_Info.Yaw_Gyro,
+      INS_Info.Pitch_Gyro,
+      INS_Info.Roll_Gyro
+    });
 		
 		if(INS_Task_SysTick%5 == 0)
 		{

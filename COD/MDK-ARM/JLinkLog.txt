@@ -1,0 +1,186 @@
+T14998 683:613.696   SEGGER J-Link V8.90 Log File
+T14998 683:613.824   DLL Compiled: Nov 26 2025 17:20:53
+T14998 683:613.824   Logging started @ 2026-09-24 15:36
+T14998 683:613.824   Process: C:\Keil_v5\UV4\UV4.exe
+T14998 683:613.824 - 17.645ms 
+T14998 683:613.824 JLINK_SetWarnOutHandler(...)
+T14998 683:613.824 - 0.011ms 
+T14998 683:613.888 JLINK_OpenEx(...)
+T14998 683:615.616   Firmware: J-Link V9 compiled May  7 2021 16:26:12
+T14998 683:616.064   Firmware: J-Link V9 compiled May  7 2021 16:26:12
+T14998 683:616.128   Decompressing FW timestamp took 74 us
+T14998 683:621.504   Hardware: V9.70
+T14998 683:621.504   S/N: 602712370
+T14998 683:621.504   OEM: SEGGER
+T14998 683:621.504   Feature(s): GDB, RDI, FlashBP, FlashDL, JFlash
+T14998 683:621.888   Bootloader: (FW returned invalid version)
+T14998 683:622.400   TELNET listener socket opened on port 19021
+T14998 683:625.536   WEBSRV WEBSRV_Init(): Starting webserver thread(s)
+T14998 683:625.600   WEBSRV Webserver running on local port 19080
+T14998 683:625.792   Looking for J-Link GUI Server exe at: C:\Keil_v5\ARM\Segger\JLinkGUIServer.exe
+T14998 683:625.856   Looking for J-Link GUI Server exe at: C:\Program Files\SEGGER\JLink_V890\JLinkGUIServer.exe
+T14998 683:625.856   Forking J-Link GUI Server: C:\Program Files\SEGGER\JLink_V890\JLinkGUIServer.exe
+T14998 683:630.976   J-Link GUI Server info: "J-Link GUI server V8.90 "
+T14998 683:631.232 - 17.347ms returns "O.K."
+T14998 683:631.232 JLINK_GetEmuCaps()
+T14998 683:631.232 - 0.006ms returns 0xB9FF7BBF
+T14998 683:631.232 JLINK_TIF_GetAvailable(...)
+T14998 683:631.424 - 0.166ms 
+T14998 683:631.488 JLINK_SetErrorOutHandler(...)
+T14998 683:631.488 - 0.006ms 
+T14998 683:631.680 JLINK_ExecCommand("ProjectFile = "C:\workspace\RoboMaster\WHURM2027_sentry_mc02\COD\MDK-ARM\JLinkSettings.ini"", ...). 
+T14998 683:633.984 - 2.263ms returns 0x00
+T14998 683:633.984 JLINK_ExecCommand("Device = STM32H723VGTx", ...). 
+T14998 683:634.176   Flash bank @ 0x08000000: SFL: Parsing sectorization info from ELF file
+T14998 683:634.176     FlashDevice.SectorInfo[0]: .SectorSize = 0x00020000, .SectorStartAddr = 0x00000000
+T14998 683:634.176   FlashBank @0x08000000: Sectorization info from SFL ELF file ignored because sectorization override from DLL / XML file is active.
+T14998 683:634.432   Flash bank @ 0x90000000: SFL: Parsing sectorization info from ELF file
+T14998 683:634.432     FlashDevice.SectorInfo[0]: .SectorSize = 0x00010000, .SectorStartAddr = 0x00000000
+T14998 683:636.736   Device "STM32H723VG" selected.
+T14998 683:637.120 - 3.166ms returns 0x00
+T14998 683:637.120 JLINK_ExecCommand("DisableConnectionTimeout", ...). 
+T14998 683:637.120   ERROR: Unknown command
+T14998 683:637.120 - 0.010ms returns 0x01
+T14998 683:637.184 JLINK_GetHardwareVersion()
+T14998 683:637.184 - 0.005ms returns 97000
+T14998 683:637.184 JLINK_GetDLLVersion()
+T14998 683:637.184 - 0.005ms returns 89000
+T14998 683:637.184 JLINK_GetOEMString(...)
+T14998 683:637.184 JLINK_GetFirmwareString(...)
+T14998 683:637.184 - 0.005ms 
+T14998 683:637.248 JLINK_GetDLLVersion()
+T14998 683:637.248 - 0.005ms returns 89000
+T14998 683:637.248 JLINK_GetCompileDateTime()
+T14998 683:637.248 - 0.005ms 
+T14998 683:637.248 JLINK_GetFirmwareString(...)
+T14998 683:637.248 - 0.005ms 
+T14998 683:637.248 JLINK_GetHardwareVersion()
+T14998 683:637.248 - 0.005ms returns 97000
+T14998 683:637.312 JLINK_GetSN()
+T14998 683:637.312 - 0.005ms returns 602712370
+T14998 683:637.312 JLINK_GetOEMString(...)
+T14998 683:637.312 JLINK_TIF_Select(JLINKARM_TIF_JTAG)
+T14998 683:637.888 - 0.552ms returns 0x00
+T14998 683:637.888 JLINK_HasError()
+T14998 683:637.888 JLINK_SetSpeed(500)
+T14998 683:637.888 - 0.047ms 
+T14998 683:638.272 JLINK_HasError()
+T14998 683:638.272 JLINK_SetResetType(JLINKARM_RESET_TYPE_NORMAL)
+T14998 683:638.272 - 0.012ms returns JLINKARM_RESET_TYPE_NORMAL
+T14998 683:638.272 JLINK_Reset()
+T14998 683:638.464   ConfigTargetSettings() start
+T14998 683:638.464    J-Link Script File: Executing ConfigTargetSettings()
+T14998 683:638.528   ConfigTargetSettings() end - Took 24us
+T14998 683:638.592   InitTarget() start
+T14998 683:638.592    J-Link Script File: Executing InitTarget()
+T14998 683:638.784   JTAG selected. Identifying JTAG Chain...
+T14998 683:640.896   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 683:641.472   Error: Scanning JTAG chain failed.
+T14998 683:641.472   Can not attach to CPU. Trying connect under reset.
+T14998 683:692.608   JTAG selected. Identifying JTAG Chain...
+T14998 683:694.848   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 683:695.488   Error: Scanning JTAG chain failed.
+T14998 683:695.488   Connecting to CPU via connect under reset failed.
+T14998 683:746.112   
+  ***** Error: 
+T14998 683:746.176   J-Link script file function InitTarget() returned with error code -1
+T14998 683:746.176   InitTarget() end - Took 107ms
+T14998 683:746.176   Connect failed. Resetting via Reset pin and trying again.
+T14998 683:808.128   ConfigTargetSettings() start
+T14998 683:808.256    J-Link Script File: Executing ConfigTargetSettings()
+T14998 683:808.256   ConfigTargetSettings() end - Took 28us
+T14998 683:808.320   InitTarget() start
+T14998 683:808.320    J-Link Script File: Executing InitTarget()
+T14998 683:808.512   JTAG selected. Identifying JTAG Chain...
+T14998 683:810.688   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 683:811.264   Error: Scanning JTAG chain failed.
+T14998 683:811.328   Can not attach to CPU. Trying connect under reset.
+T14998 683:861.632   JTAG selected. Identifying JTAG Chain...
+T14998 683:863.872   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 683:864.448   Error: Scanning JTAG chain failed.
+T14998 683:864.448   Connecting to CPU via connect under reset failed.
+T14998 683:914.752   
+  ***** Error: 
+T14998 683:914.816   J-Link script file function InitTarget() returned with error code -1
+T14998 683:914.816   InitTarget() end - Took 106ms
+T14998 683:914.880 - 276.547ms 
+T14998 683:914.880 JLINK_GetIdData(pIdData)
+T14998 683:915.072   ConfigTargetSettings() start
+T14998 683:915.136    J-Link Script File: Executing ConfigTargetSettings()
+T14998 683:915.136   ConfigTargetSettings() end - Took 25us
+T14998 683:915.136   InitTarget() start
+T14998 683:915.136    J-Link Script File: Executing InitTarget()
+T14998 683:915.328   JTAG selected. Identifying JTAG Chain...
+T14998 683:917.440   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 683:918.080   Error: Scanning JTAG chain failed.
+T14998 683:918.080   Can not attach to CPU. Trying connect under reset.
+T14998 683:969.280   JTAG selected. Identifying JTAG Chain...
+T14998 683:971.456   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 683:972.160   Error: Scanning JTAG chain failed.
+T14998 683:972.224   Connecting to CPU via connect under reset failed.
+T14998 684:022.336   
+  ***** Error: 
+T14998 684:022.336   J-Link script file function InitTarget() returned with error code -1
+T14998 684:022.400   InitTarget() end - Took 107ms
+T14998 684:022.400   Connect failed. Resetting via Reset pin and trying again.
+T14998 684:083.328   ConfigTargetSettings() start
+T14998 684:083.328    J-Link Script File: Executing ConfigTargetSettings()
+T14998 684:083.392   ConfigTargetSettings() end - Took 28us
+T14998 684:083.392   InitTarget() start
+T14998 684:083.456    J-Link Script File: Executing InitTarget()
+T14998 684:083.584   JTAG selected. Identifying JTAG Chain...
+T14998 684:085.888   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 684:086.464   Error: Scanning JTAG chain failed.
+T14998 684:086.464   Can not attach to CPU. Trying connect under reset.
+T14998 684:136.960   JTAG selected. Identifying JTAG Chain...
+T14998 684:139.136   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 684:139.776   Error: Scanning JTAG chain failed.
+T14998 684:139.840   Connecting to CPU via connect under reset failed.
+T14998 684:190.464   
+  ***** Error: 
+T14998 684:190.528   J-Link script file function InitTarget() returned with error code -1
+T14998 684:190.528   InitTarget() end - Took 107ms
+T14998 684:190.592 - 275.655ms 
+T14998 684:190.592 JLINK_GetIdData(pIdData)
+T14998 684:190.784   ConfigTargetSettings() start
+T14998 684:190.848    J-Link Script File: Executing ConfigTargetSettings()
+T14998 684:190.848   ConfigTargetSettings() end - Took 17us
+T14998 684:190.848   InitTarget() start
+T14998 684:190.848    J-Link Script File: Executing InitTarget()
+T14998 684:190.976   JTAG selected. Identifying JTAG Chain...
+T14998 684:193.088   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 684:193.664   Error: Scanning JTAG chain failed.
+T14998 684:193.664   Can not attach to CPU. Trying connect under reset.
+T14998 684:244.032   JTAG selected. Identifying JTAG Chain...
+T14998 684:246.144   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 684:246.784   Error: Scanning JTAG chain failed.
+T14998 684:246.784   Connecting to CPU via connect under reset failed.
+T14998 684:297.024   
+  ***** Error: 
+T14998 684:297.088   J-Link script file function InitTarget() returned with error code -1
+T14998 684:297.088   InitTarget() end - Took 106ms
+T14998 684:297.088   Connect failed. Resetting via Reset pin and trying again.
+T14998 684:358.528   ConfigTargetSettings() start
+T14998 684:358.528    J-Link Script File: Executing ConfigTargetSettings()
+T14998 684:358.592   ConfigTargetSettings() end - Took 15us
+T14998 684:358.592   InitTarget() start
+T14998 684:358.592    J-Link Script File: Executing InitTarget()
+T14998 684:358.784   JTAG selected. Identifying JTAG Chain...
+T14998 684:360.896   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 684:361.536   Error: Scanning JTAG chain failed.
+T14998 684:361.536   Can not attach to CPU. Trying connect under reset.
+T14998 684:412.224   JTAG selected. Identifying JTAG Chain...
+T14998 684:414.464   TotalIRLen = ?, IRPrint = 0x..000000000000000000000000
+T14998 684:415.104   Error: Scanning JTAG chain failed.
+T14998 684:415.104   Connecting to CPU via connect under reset failed.
+T14998 684:465.792   
+  ***** Error: 
+T14998 684:465.792   J-Link script file function InitTarget() returned with error code -1
+T14998 684:465.792   InitTarget() end - Took 107ms
+T14998 684:465.792 - 275.213ms 
+T14998 684:468.160 JLINK_GetFirmwareString(...)
+T14998 684:468.224 - 0.020ms 
+T14998 1026:287.104 JLINK_Close()
+T14998 1026:300.928 - 13.798ms
+T14998 1026:300.928   
+T14998 1026:300.928   Closed

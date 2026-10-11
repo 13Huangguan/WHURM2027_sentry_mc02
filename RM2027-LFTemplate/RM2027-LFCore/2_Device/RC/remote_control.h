@@ -9,10 +9,13 @@
 //#include "attribute_typedef.h"
 //#include "macro_typedef.h"
 
+<<<<<<< HEAD
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+=======
+>>>>>>> upstream/main
 #define RC_DT7      0  // DT7遥控器
 #define RC_AT9S_PRO 1  // AT9S PRO遥控器
 #define RC_HT8A     2  // HT8A遥控器
@@ -21,6 +24,13 @@ extern "C" {
 
 #ifndef __RC_TYPE
 #define __RC_TYPE RC_ET08A  // 遥控器类型
+<<<<<<< HEAD
+=======
+
+#endif
+#ifndef __CONTROL_LINK_RC
+#define __CONTROL_LINK_RC CL_RC_DIRECT  // 遥控器数据传输方式
+>>>>>>> upstream/main
 #endif
 
 #define AX_X 	0  // x轴
@@ -142,7 +152,11 @@ typedef struct __RC_ctrl
         struct __rc
         {
                 int16_t ch[5];
+<<<<<<< HEAD
                 char s[2];
+=======
+                char s[4];
+>>>>>>> upstream/main
         } __attribute__((packed)) rc;
         struct __mouse
         {
@@ -180,6 +194,7 @@ extern void slove_data_error(void);
 /* API                                                            */
 /******************************************************************/
 
+<<<<<<< HEAD
 extern bool GetRcOffline(void);
 
 extern float GetDt7RcCh(uint8_t ch);
@@ -191,6 +206,15 @@ extern bool GetDt7Keyboard(uint8_t key);
 #ifdef __cplusplus
 }
 #endif
+=======
+extern inline bool GetRcOffline(void);
+
+extern inline float GetDt7RcCh(uint8_t ch);
+extern inline char GetDt7RcSw(uint8_t sw);
+extern inline float GetDt7MouseSpeed(uint8_t axis);
+extern inline bool GetDt7Mouse(uint8_t key);
+extern inline bool GetDt7Keyboard(uint8_t key);
+>>>>>>> upstream/main
 
 #endif
 /*------------------------------ End of File ------------------------------*/
