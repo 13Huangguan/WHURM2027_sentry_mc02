@@ -66,6 +66,9 @@ osStaticThreadDef_t Start_MiniPC_TaskControlBlock;
 osThreadId Start_Shoot_TaskHandle;
 uint32_t Start_Shoot_TaskBuffer[ 1024 ];
 osStaticThreadDef_t Start_Shoot_TaskControlBlock;
+uint32_t REFEREE_TaskBuffer[512];
+osStaticThreadDef_t REFEREE_TaskControlBlock;
+osThreadId referee_usart_task_handle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -78,6 +81,7 @@ void CAN_Task(void const * argument);
 void Detect_Task(void const * argument);
 void MiniPC_Task(void const * argument);
 void Shoot_Task(void const * argument);
+void referee_task(void const * argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -150,9 +154,11 @@ void MX_FREERTOS_Init(void) {
   Start_Shoot_TaskHandle = osThreadCreate(osThread(Start_Shoot_Task), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  /* 静态任务声明 */
+  osThreadStaticDef(REFEREE, referee_task, osPriorityNormal, 0, 512, REFEREE_TaskBuffer, &REFEREE_TaskControlBlock);
+  referee_usart_task_handle = osThreadCreate(osThread(REFEREE), NULL);
+   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
-
 }
 
 /* USER CODE BEGIN Header_INS_Task */
