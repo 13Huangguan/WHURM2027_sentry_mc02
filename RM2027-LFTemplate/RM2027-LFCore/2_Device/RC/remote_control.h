@@ -179,7 +179,9 @@ extern void slove_data_error(void);
 /******************************************************************/
 /* API                                                            */
 /******************************************************************/
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern inline bool GetRcOffline(void);
 
 extern inline float GetDt7RcCh(uint8_t ch);
@@ -187,6 +189,9 @@ extern inline char GetDt7RcSw(uint8_t sw);
 extern inline float GetDt7MouseSpeed(uint8_t axis);
 extern inline bool GetDt7Mouse(uint8_t key);
 extern inline bool GetDt7Keyboard(uint8_t key);
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 /*------------------------------ End of File ------------------------------*/

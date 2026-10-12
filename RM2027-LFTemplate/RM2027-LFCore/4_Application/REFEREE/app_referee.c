@@ -79,7 +79,7 @@ SendDataSentryCmd_s send_data_sentry_cmd;
   * @param[in]      pvParameters: NULL
   * @retval         none
   */
-void referee_usart_task(void const * argument)
+void referee_task(void const * argument)
 {
     init_referee_struct_data();
     fifo_s_init(&referee_fifo, referee_fifo_buf, REFEREE_FIFO_BUF_LENGTH);
@@ -225,7 +225,7 @@ void USART1_IRQHandler(void)
     //static volatile uint8_t res;
     if(USART1->ISR & UART_FLAG_IDLE)
     {
-        __HAL_UART_CLEAR_PEFLAG(&huart1);
+        __HAL_UART_CLEAR_IDLEFLAG(&huart1);
 
         static uint16_t this_time_rx_len = 0;
 

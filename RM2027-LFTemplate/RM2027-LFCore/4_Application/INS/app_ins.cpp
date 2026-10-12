@@ -187,3 +187,4 @@ static void INS_Task_Init(void)
 	QuaternionEKF_Init(&Quaternion_Info,10.f, 0.001f, 1000000.f,QuaternionEKF_A_Data,QuaternionEKF_P_Data);
 }
 //------------------------------------------------------------------------------
+}
