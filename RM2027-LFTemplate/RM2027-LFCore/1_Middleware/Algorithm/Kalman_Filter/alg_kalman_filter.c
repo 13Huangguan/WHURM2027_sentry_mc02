@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "alg_kalman_filter.h"
 
 void Kalman_Filter_Init(KalmanFilter_Info_TypeDef *KF,uint8_t Xhat_Size,uint8_t U_Size,uint8_t Z_Size)
