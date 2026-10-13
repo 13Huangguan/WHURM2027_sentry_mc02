@@ -31,10 +31,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "dvc_bsp.h"
-<<<<<<< HEAD
 #include "app_motor.h"
-=======
->>>>>>> upstream/main
 #include "remote_control.h"
 /* USER CODE END Includes */
 
@@ -136,11 +133,8 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   bspInit();
-<<<<<<< HEAD
-  Motor_Init();
-=======
->>>>>>> upstream/main
   remote_control_init();
+  Motor_Init();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */
