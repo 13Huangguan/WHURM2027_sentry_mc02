@@ -41,4 +41,12 @@ typedef struct __packed
   */
 extern void referee_task(void const * argument);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+extern void LF_UpdateReferee(uint16_t robot_id, uint16_t remaining_hp, uint8_t connected);
+#ifdef __cplusplus
+}
+#endif
+
 #endif

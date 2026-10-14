@@ -14,6 +14,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "app_referee.h"
+
 extern "C" {
 LuojiaFox::SystemStateSnapshot g_system_state{};
 }
@@ -59,3 +61,14 @@ SystemStateSnapshot SystemStateStore::Read() const
 }
 
 } // namespace LuojiaFox
+
+extern "C" void LF_UpdateReferee(uint16_t robot_id, uint16_t remaining_hp, uint8_t connected)
+{
+    LuojiaFox::RefereeState state;
+
+    state.robot_id     = robot_id;
+    state.remaining_hp = remaining_hp;
+    state.connected    = (connected != 0U);
+
+    LuojiaFox::system_state.UpdateReferee(state);
+}

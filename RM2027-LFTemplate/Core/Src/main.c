@@ -133,6 +133,9 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   bspInit();
+  /* Start the BMI088 heat power PWM (TIM3_CH4), duty is left at 0 here so the
+   * heater stays off until the INS task runs its temperature control loop. */
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
   Motor_Init();
   remote_control_init();
   /* USER CODE END 2 */

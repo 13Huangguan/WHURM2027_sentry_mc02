@@ -87,7 +87,7 @@ static uint8_t Gyro_Register_ConfigurationData_ErrorStatus[BMI088_WRITE_GYRO_REG
     {BMI088_GYRO_RANGE, BMI088_GYRO_2000, BMI088_GYRO_RANGE_ERROR}, 
 
     /* Data Transfer Rate and Bandwidth Settings */
-    {BMI088_GYRO_BANDWIDTH, (BMI088_GYRO_2000_230_HZ | BMI088_GYRO_BANDWIDTH_MUST_Set), BMI088_GYRO_BANDWIDTH_ERROR}, 
+    {BMI088_GYRO_BANDWIDTH, (BMI088_GYRO_1000_116_HZ | BMI088_GYRO_BANDWIDTH_MUST_Set), BMI088_GYRO_BANDWIDTH_ERROR}, 
 
     /* Power Mode Selection Register */
     {BMI088_GYRO_LPM1, BMI088_GYRO_NORMAL_MODE, BMI088_GYRO_LPM1_ERROR},   
@@ -215,7 +215,7 @@ static BMI088_Status_e BMI088_Gyro_Init(void)
     return BMI088_NO_ERROR;
 }
 
-#define IMU_Calibration_ENABLE  1U
+#define IMU_Calibration_ENABLE  0U
 
 static void BMI088_Offset_Update(BMI088_Info_Typedef *bmi088_Info)
 {
@@ -255,9 +255,9 @@ static void BMI088_Offset_Update(BMI088_Info_Typedef *bmi088_Info)
 	
 #else /* DISABLE the BMI088 Calibration */
 	/* store the previous offsets */
-  bmi088_Info->Offsets_Gyro_X = 0.00150990125;
-  bmi088_Info->Offsets_Gyro_Y = 0.00120758242;
-  bmi088_Info->Offsets_Gyro_Z =-0.00392505853;
+  bmi088_Info->Offsets_Gyro_X = 0.00405759178;
+  bmi088_Info->Offsets_Gyro_Y = 0.000725232065;
+  bmi088_Info->Offsets_Gyro_Z = 0.00128263142;
 #endif
 
   /* set the offset init flag */

@@ -107,6 +107,11 @@ void referee_task(void const * argument)
 
 
         referee_unpack_fifo_data();
+
+        LF_UpdateReferee((uint16_t)get_robot_id(),
+                         get_current_HP(),
+                         (uint8_t)(!GetRefereeOffline()));
+
         osDelay(10);
     }
 }

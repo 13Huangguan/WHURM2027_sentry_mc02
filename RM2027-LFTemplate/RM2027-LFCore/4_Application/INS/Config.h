@@ -34,7 +34,7 @@
                                     else if ((x) < (min)) {(x) = (min);} \
                                 }while(0U)
  
-#define GravityAccel  9.718f
+#define GravityAccel  9.79361f
 
 #define Angle_to_rad  0.01745329f
 

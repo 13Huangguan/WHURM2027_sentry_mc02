@@ -50,7 +50,12 @@ typedef struct
 /* Externs---------------------------------------------------------*/
 extern INS_Info_Typedef INS_Info;
 
-extern void Start_INS_Task(void const * argument);
+/**
+ * @brief the thread entry point registered by freertos.c.
+ * @note  must be declared here, inside extern "C", so the definition in
+ *        app_ins.cpp keeps C linkage and overrides the __weak stub in freertos.c.
+ */
+extern void INS_Task(void const * argument);
 
 #ifdef __cplusplus
  }
