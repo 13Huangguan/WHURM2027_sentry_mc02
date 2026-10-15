@@ -1,18 +1,17 @@
 {
-<<<<<<< HEAD
   "version": 4,
-  "configurations": [
-    {
+    "configurations": [
+        {
       "name": "STM32H723 (GCC)",
       "compilerPath": "C:/msys64/ucrt64/bin/arm-none-eabi-gcc.exe",
       "cStandard": "gnu11",
       "cppStandard": "gnu++14",
       "intelliSenseMode": "gcc-arm",
-      "defines": [
+            "defines": [
         "USE_PWR_LDO_SUPPLY",
-        "USE_HAL_DRIVER",
-        "STM32H723xx"
-      ],
+                "USE_HAL_DRIVER",
+                "STM32H723xx"
+            ],
       "includePath": [
         "${workspaceFolder}/Core/Inc",
         "${workspaceFolder}/USB_DEVICE/App",
@@ -32,32 +31,9 @@
       "browse": {
         "path": [
           "${workspaceFolder}"
-        ],
+    ],
         "limitSymbolsToIncludedHeaders": false
       }
     }
   ]
 }
-=======
-    "configurations": [
-        {
-            "name": "Win32",
-            "includePath": [
-                "${workspaceFolder}/**"
-            ],
-            "defines": [
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE",
-                "USE_HAL_DRIVER",
-                "STM32H723xx"
-            ],
-            "cStandard": "gnu23",
-            "cppStandard": "gnu++20",
-            "intelliSenseMode": "windows-gcc-x64",
-            "configurationProvider": "ms-vscode.makefile-tools"
-        }
-    ],
-    "version": 4
-}
->>>>>>> upstream/main

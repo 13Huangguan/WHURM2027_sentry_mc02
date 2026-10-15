@@ -200,6 +200,28 @@ float basic_math::sinc(float x)
 }
 
 /**
+ * @brief 正弦，基于 CMSIS-DSP 的查表实现
+ *
+ * @param x 弧度值
+ * @return float sin(x)
+ */
+float basic_math::sin(float x)
+{
+    return (arm_sin_f32(x));
+}
+
+/**
+ * @brief 余弦，基于 CMSIS-DSP 的查表实现
+ *
+ * @param x 弧度值
+ * @return float cos(x)
+ */
+float basic_math::cos(float x)
+{
+    return (arm_cos_f32(x));
+}
+
+/**
  * @brief 将浮点数映射到整型
  *
  * @param x 浮点数
