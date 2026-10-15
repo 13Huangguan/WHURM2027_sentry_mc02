@@ -7,6 +7,7 @@
  *
  * @copyright WHU-LuojiaFox (c) 2026
  *
+ * 固件侧复用 alg_basic 的 basic_math（限幅 / 绝对值 / 符号 / 三角）。
  * PC 侧自检（不需要任何 ARM 环境）：
  *     g++ -std=c++14 -DALG_FORCE_HOST_TEST alg_force.cpp -o alg_force_test
  *     ./alg_force_test
@@ -18,6 +19,51 @@
 
 #include <math.h>
 
+#ifdef ALG_FORCE_HOST_TEST
+/*
+ * 宿主机自检不能拉入 alg_basic：它包含 arm_math.h（CMSIS-DSP）。
+ * 这里就地给出 basic_math 中被本文件用到的等价实现，
+ * 保证同一份源码在 PC 上仍能独立编译。
+ */
+#include <cmath>
+namespace basic_math {
+template <typename Type>
+Type constrain(Type x, Type min, Type max) {
+    if (x < min) {
+        x = min;
+    } else if (x > max) {
+        x = max;
+    }
+    return (x);
+}
+
+template <typename Type>
+Type abs(Type x) {
+    return ((x > 0) ? x : -x);
+}
+
+template <typename Type>
+int8_t sign(Type x) {
+    if (x > 0) {
+        return (1);
+    } else if (x < 0) {
+        return (-1);
+    }
+    return (0);
+}
+
+inline float sin(float x) {
+    return (std::sin(x));
+}
+
+inline float cos(float x) {
+    return (std::cos(x));
+}
+}  // namespace basic_math
+#else
+#include "alg_basic.h"
+#endif
+
 /* Private macros ------------------------------------------------------------*/
 
 /* Private types -------------------------------------------------------------*/
@@ -26,41 +72,7 @@
 
 /* Private function declarations ---------------------------------------------*/
 
-/**
- * @brief 符号函数，返回 -1 / 0 / +1
- *
- * @param value 输入
- * @return float 符号
- */
-static float forceSolverSign(float value) {
-    if (value > 0.0f) {
-        return (1.0f);
-    }
-    if (value < 0.0f) {
-        return (-1.0f);
-    }
-    return (0.0f);
-}
-
 /* Function prototypes -------------------------------------------------------*/
-
-/**
- * @brief 限幅
- *
- * @param value    输入
- * @param minValue 下限
- * @param maxValue 上限
- * @return float 限幅后的值
- */
-float ForceSolver::constrainValue(float value, float minValue, float maxValue) {
-    if (value > maxValue) {
-        return (maxValue);
-    }
-    if (value < minValue) {
-        return (minValue);
-    }
-    return (value);
-}
 
 /**
  * @brief 初始化解算器
@@ -190,7 +202,7 @@ void ForceSolver::setFeedforwardTorque(const float *torque) {
  * @param alpha 滤波系数 [0, 1]
  */
 void ForceSolver::setVelocityFilterAlpha(float alpha) {
-    VelocityFilterAlpha = constrainValue(alpha, 0.0f, 1.0f);
+    VelocityFilterAlpha = basic_math::constrain(alpha, 0.0f, 1.0f);
 }
 
 /**
@@ -230,15 +242,16 @@ void ForceSolver::timCalculatePeriodElapsedCallback() {
         const float acceleration = (Velocity[i] - PreVelocity[i]) / Dt;
         torque += Param[i].Inertia * acceleration;
         torque += Param[i].ViscousFriction * Velocity[i];
-        torque += Param[i].CoulombFriction * forceSolverSign(Velocity[i]);
+        torque += Param[i].CoulombFriction * (float)basic_math::sign(Velocity[i]);
 
         // 3. 重力矩补偿：A * cos(theta - phi)
-        torque += Param[i].GravityAmplitude * cosf(Position[i] - Param[i].GravityOffset);
+        torque +=
+            Param[i].GravityAmplitude * basic_math::cos(Position[i] - Param[i].GravityOffset);
 
         // 4. 叠加额外前馈并限幅
         torque += FeedforwardTorque[i];
-        const float torqueMax = fabsf(Param[i].TorqueMax);
-        torque = constrainValue(torque, -torqueMax, torqueMax);
+        const float torqueMax = basic_math::abs(Param[i].TorqueMax);
+        torque = basic_math::constrain(torque, -torqueMax, torqueMax);
         Torque[i] = torque;
 
         // 5. 力矩 -> 电机侧控制量
@@ -390,13 +403,16 @@ static void ForceSolverHostTestOmniChassis() {
     }
 
     ForceSolverHostCheck(
-        fabsf(forceX - generalizedForce[0]) < 1e-3f, "还原 Fx", forceX, generalizedForce[0]
+        basic_math::abs(forceX - generalizedForce[0]) < 1e-3f, "还原 Fx", forceX,
+        generalizedForce[0]
     );
     ForceSolverHostCheck(
-        fabsf(forceY - generalizedForce[1]) < 1e-3f, "还原 Fy", forceY, generalizedForce[1]
+        basic_math::abs(forceY - generalizedForce[1]) < 1e-3f, "还原 Fy", forceY,
+        generalizedForce[1]
     );
     ForceSolverHostCheck(
-        fabsf(momentZ - generalizedForce[2]) < 1e-3f, "还原 Mz", momentZ, generalizedForce[2]
+        basic_math::abs(momentZ - generalizedForce[2]) < 1e-3f, "还原 Mz", momentZ,
+        generalizedForce[2]
     );
 }
 
@@ -424,7 +440,8 @@ static void ForceSolverHostTestGravity() {
     solver.timCalculatePeriodElapsedCallback();
 
     ForceSolverHostCheck(
-        fabsf(solver.getTorque(0) - 2.0f) < 1e-4f, "重力矩 A*cos(theta-phi)", solver.getTorque(0), 2.0f
+        basic_math::abs(solver.getTorque(0) - 2.0f) < 1e-4f,
+        "重力矩 A*cos(theta-phi)", solver.getTorque(0), 2.0f
     );
 
     // theta - phi = pi/2 时重力矩应为 0
@@ -432,7 +449,8 @@ static void ForceSolverHostTestGravity() {
     solver.setNow(positionQuarter, velocity);
     solver.timCalculatePeriodElapsedCallback();
     ForceSolverHostCheck(
-        fabsf(solver.getTorque(0)) < 1e-4f, "重力矩在 pi/2 处为 0", solver.getTorque(0), 0.0f
+        basic_math::abs(solver.getTorque(0)) < 1e-4f,
+        "重力矩在 pi/2 处为 0", solver.getTorque(0), 0.0f
     );
 
     // 失能后输出必须清零
@@ -469,13 +487,13 @@ static void ForceSolverHostTestConversion() {
     const float expectTorque = 1.0f;
     const float expectOut = -(1.0f / (0.7f * 19.0f));
     ForceSolverHostCheck(
-        fabsf(solver.getTorque(0) - expectTorque) < 1e-5f,
+        basic_math::abs(solver.getTorque(0) - expectTorque) < 1e-5f,
         "力矩被 TorqueMax 钳住",
         solver.getTorque(0),
         expectTorque
     );
     ForceSolverHostCheck(
-        fabsf(solver.getOut(0) - expectOut) < 1e-6f,
+        basic_math::abs(solver.getOut(0) - expectOut) < 1e-6f,
         "力矩 -> 电流换算与方向",
         solver.getOut(0),
         expectOut

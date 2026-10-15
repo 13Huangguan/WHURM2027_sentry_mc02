@@ -110,6 +110,39 @@ template <typename Type>
 Type abs(Type x) {
   return ((x > 0) ? x : -x);
 }
+
+/**
+ * @brief 求符号
+ *
+ * @tparam Type 类型
+ * @param x 传入数据
+ * @return int8_t 返回 1 / 0 / -1
+ */
+template <typename Type>
+int8_t sign(Type x) {
+  if (x > 0) {
+    return (1);
+  } else if (x < 0) {
+    return (-1);
+  }
+  return (0);
+}
+
+/**
+ * @brief 正弦，基于 CMSIS-DSP 的查表实现
+ *
+ * @param x 弧度值
+ * @return float sin(x)
+ */
+float sin(float x);
+
+/**
+ * @brief 余弦，基于 CMSIS-DSP 的查表实现
+ *
+ * @param x 弧度值
+ * @return float cos(x)
+ */
+float cos(float x);
 }  // namespace basic_math
 
 #endif

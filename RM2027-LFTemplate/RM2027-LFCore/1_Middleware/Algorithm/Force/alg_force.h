@@ -7,8 +7,8 @@
  *
  * @copyright WHU-LuojiaFox (c) 2026
  *
- * 只依赖 C 标准库，不含 HAL / FreeRTOS / CMSIS-DSP，
- * 因此同一份文件既能编进固件，也能在 PC 上用 g++ 直接跑自检
+ * 通用数学（限幅 / 绝对值 / 符号 / 三角）复用 alg_basic 的 basic_math，
+ * 固件侧直接包含 alg_basic.h；自检在 PC 上用 g++ 直接跑，不需要 ARM 环境
  * （编译时定义 ALG_FORCE_HOST_TEST，见 alg_force.cpp 末尾）。
  *
  * 解算链路（都在 timCalculatePeriodElapsedCallback 里）：
@@ -246,17 +246,6 @@ protected:
 
     // 状态
     ForceSolverStatus_e Status = ForceSolverStatus_Disable;
-
-private:
-    /**
-     * @brief 限幅
-     *
-     * @param value    输入
-     * @param minValue 下限
-     * @param maxValue 上限
-     * @return float 限幅后的值
-     */
-    static float constrainValue(float value, float minValue, float maxValue);
 };
 
 /* Exported function declarations --------------------------------------------*/
