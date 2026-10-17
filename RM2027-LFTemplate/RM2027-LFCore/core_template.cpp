@@ -1,3 +1,5 @@
+#include "core_template.hpp"
+
 /**
  * @file template.cpp
  * @author BayekQ (206858817@qq.com)
@@ -9,7 +11,6 @@
  *
  */
 
-#include "template.hpp"
 
 /* Includes ------------------------------------------------------------------*/
 

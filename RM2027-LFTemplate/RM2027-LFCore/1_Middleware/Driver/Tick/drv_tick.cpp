@@ -14,6 +14,7 @@
 
 /* Include------------------------------------------------------------------*/
 #include "drv_tick.h"
+
 #include "stm32h7xx.h"
 
 /**
@@ -26,11 +27,10 @@
   *         # delay_us and delay_ms will not cause task scheduling (blocking type)
   * @retval haltick
   */
-static uint32_t HaL_Tick(void)
-{
-    uint32_t HaL_Tick = 0;
-    
-	  register uint32_t ms = 0, us= 0;
+static uint32_t haLTick(void) {
+    uint32_t tick_us = 0;
+
+    uint32_t ms = 0, us = 0;
 
     ms = HAL_GetTick();
     // use the TIM2 as the HAL TimeBase
@@ -39,9 +39,9 @@ static uint32_t HaL_Tick(void)
 
     us = TIM2->CNT;
 
-    HaL_Tick = ms*1000 + us;
+    tick_us = ms * 1000 + us;
 
-    return HaL_Tick;
+    return tick_us;
 }
 
 /**
@@ -49,11 +49,10 @@ static uint32_t HaL_Tick(void)
   * @param  us: delay microsecond 
   * @retval none
   */
-void Delay_us(uint32_t us)
-{
-    uint32_t Now = HaL_Tick();
+void delayUs(uint32_t us) {
+    uint32_t now = haLTick();
 
-    while((HaL_Tick() - Now) < us);
+    while ((haLTick() - now) < us) {}
 }
 
 /**
@@ -61,9 +60,8 @@ void Delay_us(uint32_t us)
   * @param  ms: delay millisecond
   * @retval none
   */
-void Delay_ms(uint32_t ms)
-{
-    uint32_t Now = HAL_GetTick();
+void delayMs(uint32_t ms) {
+    uint32_t now = HAL_GetTick();
 
-    while((HAL_GetTick() - Now) < ms);
+    while ((HAL_GetTick() - now) < ms) {}
 }

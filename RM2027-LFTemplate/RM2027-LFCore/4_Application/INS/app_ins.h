@@ -16,9 +16,7 @@
 #ifndef APP_INS_H
 #define APP_INS_H
 
-#ifdef __cplusplus
- extern "C" {
-#endif
+#include "core_linkage.h"
 
 /* Includes ------------------------------------------------------------------*/
 #include "stdint.h"
@@ -27,38 +25,28 @@
 /**
  * @brief typedef structure that contains the information for the INS.
  */
-typedef struct
-{
-	float Pitch_Angle;
-	float Yaw_Angle;
-	float Yaw_TolAngle;
-	float Roll_Angle;
+typedef struct {
+    float pitch_angle;
+    float yaw_angle;
+    float yaw_tol_angle;
+    float roll_angle;
 
-  float Pitch_Gyro;
-  float Yaw_Gyro;
-  float Roll_Gyro;
+    float pitch_gyro;
+    float yaw_gyro;
+    float roll_gyro;
 
-  float Angle[3];
-	float Gyro[3];
-	float Accel[3];
+    float angle[3];
+    float gyro[3];
+    float accel[3];
 
-	float Last_Yaw_Angle;
-	int16_t YawRoundCount;
+    float last_yaw_angle;
+    int16_t yaw_round_count;
 
-}INS_Info_Typedef;
+} InsInfo;
 
 /* Externs---------------------------------------------------------*/
-extern INS_Info_Typedef INS_Info;
+LF_EXTERN_C InsInfo ins_info;
 
-/**
- * @brief the thread entry point registered by freertos.c.
- * @note  must be declared here, inside extern "C", so the definition in
- *        app_ins.cpp keeps C linkage and overrides the __weak stub in freertos.c.
- */
-extern void INS_Task(void const * argument);
-
-#ifdef __cplusplus
- }
-#endif
+LF_EXTERN_C void INS_Task(void const* argument);
 
 #endif //APP_INS_H

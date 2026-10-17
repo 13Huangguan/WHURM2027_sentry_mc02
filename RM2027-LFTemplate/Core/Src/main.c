@@ -133,9 +133,8 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   bspInit();
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
-  Motor_Init();
   remote_control_init();
+  Motor_Init();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */

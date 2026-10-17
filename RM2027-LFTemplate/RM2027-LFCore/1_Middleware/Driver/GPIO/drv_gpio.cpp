@@ -14,6 +14,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "drv_gpio.h"
+
 #include "gpio.h"
 #include "main.h"
 
@@ -22,7 +23,7 @@
   * @param  None
   * @retval None
   */
-void BSP_GPIO_Init(void){
+void bspGpioInit(void){
 
 //	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_14,1);
 //  HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,1);
@@ -34,7 +35,7 @@ void BSP_GPIO_Init(void){
   * @note GPIO_x: GPIOC
   * @note GPIO_PIN_x: GPIO_PIN_0
   */
-void BMI088_ACCEL_NS_L(void)
+void bmi088AccelNsL(void)
 {
     HAL_GPIO_WritePin(ACCEL_CS_GPIO_Port,ACCEL_CS_Pin,GPIO_PIN_RESET);
 }
@@ -44,7 +45,7 @@ void BMI088_ACCEL_NS_L(void)
   * @note GPIO_x: GPIOC
   * @note GPIO_PIN_x: GPIO_PIN_0
   */
-void BMI088_ACCEL_NS_H(void)
+void bmi088AccelNsH(void)
 {
     HAL_GPIO_WritePin(ACCEL_CS_GPIO_Port,ACCEL_CS_Pin,GPIO_PIN_SET);
 }
@@ -54,7 +55,7 @@ void BMI088_ACCEL_NS_H(void)
   * @note GPIO_x: GPIOC
   * @note GPIO_PIN_x: GPIO_PIN_3
   */
-void BMI088_GYRO_NS_L(void)
+void bmi088GyroNsL(void)
 {
     HAL_GPIO_WritePin(GYRO_CS_GPIO_Port,GYRO_CS_Pin,GPIO_PIN_RESET);
 }
@@ -64,7 +65,7 @@ void BMI088_GYRO_NS_L(void)
   * @note GPIO_x: GPIOC
   * @note GPIO_PIN_x: GPIO_PIN_3
   */
-void BMI088_GYRO_NS_H(void)
+void bmi088GyroNsH(void)
 {
     HAL_GPIO_WritePin(GYRO_CS_GPIO_Port,GYRO_CS_Pin,GPIO_PIN_SET);
 }

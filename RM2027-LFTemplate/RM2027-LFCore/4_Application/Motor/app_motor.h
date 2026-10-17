@@ -23,20 +23,20 @@ extern "C" {
   * @brief 启动 CAN 并配置所有电机
   * @note  必须在 MX_FDCAN1/2/3_Init() 之后调用
   */
-void Motor_Init(void);
+void motorInit(void);
 
 /**
   * @brief 周期发送电机控制量
   * @note  由 CAN_Task 以 1kHz 调用
   */
-void Motor_Control(void);
+void motorControl(void);
 
 /**
   * @brief 设置云台 pitch 的目标角度
   * @param angle 目标角度，单位度
   * @note  上电软启动完成后调用才会生效
   */
-void Motor_SetPitchAngle(float angle);
+void motorSetPitchAngle(float angle);
 
 #ifdef __cplusplus
 }
@@ -44,7 +44,7 @@ void Motor_SetPitchAngle(float angle);
 
 #ifdef __cplusplus
 /* 以下接口仅 C++ 可见，需要读电机数据时包含本头文件 */
-#include "Motor.hpp"
+#include "dvc_motor.hpp"
 
 extern DJI_Motor_Info_Class g_pitchMotor;     /*!< 云台 pitch，GM6020 */
 #endif

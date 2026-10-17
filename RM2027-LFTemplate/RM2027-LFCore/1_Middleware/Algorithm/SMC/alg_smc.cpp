@@ -17,7 +17,8 @@
   ****************************(C) COPYRIGHT 2026 LuojiaFox****************************
 */
 
-#include "smc.h"
+#include "alg_smc.hpp"
+
 #include "main.h"
 
 /**
@@ -30,7 +31,7 @@
   * @param[in]      pos_esp: 误差阈值
   * @retval         none
   */
-void SMC_init(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, float u_max, float pos_esp)
+void smcInit(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, float u_max, float pos_esp)
 {
     smc->error.tar_now = 0;
     smc->error.tar_last = 0;
@@ -44,7 +45,7 @@ void SMC_init(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, f
     smc->error.vol_error_eps = 0;
     smc->error.pos_get = 0;
     smc->error.vol_get = 0;
-    SMC_setParam(smc, param_list, flag, limit, u_max, pos_esp);
+    smcSetParam(smc, param_list, flag, limit, u_max, pos_esp);
 }
 
 /**
@@ -57,7 +58,7 @@ void SMC_init(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, f
   * @param[in]      pos_esp: 误差阈值
   * @retval         none
   */
-void SMC_setParam(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, float u_max, float pos_esp)
+void smcSetParam(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, float u_max, float pos_esp)
 {
     smc->flag = flag;
     if(flag == EXPONENT || flag == POWER || flag == VELSMC)
@@ -85,7 +86,7 @@ void SMC_setParam(Sliding *smc, const fp32 param_list[9], Rmode flag, float limi
     smc->limit = limit;
     smc->error.pos_error_eps = pos_esp;
     smc->u_max = u_max;
-    OutContinuation(smc);
+    outContinuation(smc);
 }
 
 /**
@@ -96,7 +97,7 @@ void SMC_setParam(Sliding *smc, const fp32 param_list[9], Rmode flag, float limi
   * @param[in]      vol_now: 当前速度
   * @retval         none
   */
-void SMC_posErrorUpdate(Sliding *smc, fp32 target, fp32 pos_now, fp32 vol_now, fp32 sample_period)
+void smcPosErrorUpdate(Sliding *smc, fp32 target, fp32 pos_now, fp32 vol_now, fp32 sample_period)
 {
     smc->error.tar_now = target;
     smc->error.tar_differential = (fp32)((smc->error.tar_now - smc->error.tar_last)/(fp32)sample_period);
@@ -119,7 +120,7 @@ void SMC_posErrorUpdate(Sliding *smc, fp32 target, fp32 pos_now, fp32 vol_now, f
   * @param[in]      vol_now: 当前速度
   * @retval         none
   */
-void SMC_volErrorUpdate(Sliding *smc, fp32 target, fp32 vol_now, fp32 sample_period)
+void smcVolErrorUpdate(Sliding *smc, fp32 target, fp32 vol_now, fp32 sample_period)
 {
     smc->error.tar_now = target;
     smc->error.tar_differential = (fp32)((smc->error.tar_now - smc->error.tar_last)/(fp32)sample_period);
@@ -144,7 +145,7 @@ void SMC_volErrorUpdate(Sliding *smc, fp32 target, fp32 vol_now, fp32 sample_per
   * @param[out]     smc: 滑模控制器结构数据指针
   * @retval         none
   */
-void SMC_clear(Sliding *smc)
+void smcClear(Sliding *smc)
 {
     smc->error.tar_now = 0;
     smc->error.tar_last = 0;
@@ -169,7 +170,7 @@ void SMC_clear(Sliding *smc)
   * @param[out]     smc: 滑模控制器结构数据指针
   * @retval         none
   */
-void SMC_intgValClear(Sliding *smc)
+void smcIntgValClear(Sliding *smc)
 {
     smc->error.v_error_integral = 0;
     smc->error.p_error_integral = 0;
@@ -180,55 +181,55 @@ void SMC_intgValClear(Sliding *smc)
   * @param[out]     smc: 滑模控制器结构数据指针
   * @retval         none
   */
-fp32 SMC_calc(Sliding *smc)
+fp32 smcCalc(Sliding *smc)
 {
-    fp32 u,fun;
+    fp32 u = 0.0f, fun;
     
     switch (smc->flag) {
         case EXPONENT:///指数滑模面，指数趋近律
             
-            if (fabs(smc->error.p_error) - smc->error.pos_error_eps < 0)
+            if (fabsf(smc->error.p_error) - smc->error.pos_error_eps < 0)
             {
                 smc->error.p_error = 0;
                 return 0;
             }
             
             smc->s = smc->param.c * smc->error.p_error + smc->error.v_error; //滑模面
-            fun = Sat(smc);//饱和函数近似符号函数
+            fun = sat(smc);//饱和函数近似符号函数
 //            u =  smc->param.J * ( (-smc->param.c * smc->error.v_error) - smc->param.K * smc->s - smc->param.epsilon * fun + smc->error.tar_differential_second); //控制律计算,指数趋近律
             u =  smc->param.J * ( (-smc->param.c * smc->error.v_error) - smc->param.K * smc->s - smc->param.epsilon * fun); //控制律计算,指数趋近律
             break;
 
         case POWER:///幂次滑模面，幂次趋近律
             
-            if (fabs(smc->error.p_error) - smc->error.pos_error_eps < 0)
+            if (fabsf(smc->error.p_error) - smc->error.pos_error_eps < 0)
             {
                 smc->error.p_error = 0;
                 return 0;
             }
             
             smc->s = smc->param.c * smc->error.p_error + smc->error.v_error; //滑模面
-            fun = Sat(smc);//饱和函数近似符号函数 
+            fun = sat(smc);//饱和函数近似符号函数 
 //            u =  smc->param.J * ( (-smc->param.c * smc->error.v_error) - smc->param.K * smc->s - smc->param.K * (std::pow(std::abs(smc->s),smc->param.epsilon)) * fun + smc->error.tar_differential_second); //控制律计算,幂次趋近律
-            u =  smc->param.J * ( (-smc->param.c * smc->error.v_error) - smc->param.K * smc->s - smc->param.K * (pow(fabs(smc->s),smc->param.epsilon)) * fun); //控制律计算,幂次趋近律 
+            u =  smc->param.J * ( (-smc->param.c * smc->error.v_error) - smc->param.K * smc->s - smc->param.K * (powf(fabsf(smc->s),smc->param.epsilon)) * fun); //控制律计算,幂次趋近律 
             break;
 
         case TFSMC:///tfsmc
         {
             static float pos_pow;//tfsmc 位置 幂
-            if (fabs(smc->error.p_error) - smc->error.pos_error_eps < 0)
+            if (fabsf(smc->error.p_error) - smc->error.pos_error_eps < 0)
             {
                 smc->error.p_error = 0;
                 return 0;
             }
             
-            pos_pow = pow(fabs(smc->error.p_error),smc->param.q/smc->param.p);
+            pos_pow = powf(fabsf(smc->error.p_error),smc->param.q/smc->param.p);
             if(smc->error.p_error<=0) pos_pow = -pos_pow;
             
             
             smc->s = smc->param.beta * pos_pow + smc->error.v_error; //滑模面
             
-            fun = Sat(smc);//饱和函数近似符号函数  
+            fun = sat(smc);//饱和函数近似符号函数  
             
             if(smc->error.p_error!=0)
             {
@@ -243,19 +244,19 @@ fp32 SMC_calc(Sliding *smc)
     
         case VELSMC:///速度滑模面，指数趋近律，速度环
             smc->s = smc->error.v_error + smc->param.c * smc->error.v_error_integral; //滑模面
-            fun = Sat(smc);//饱和函数近似符号函数
+            fun = sat(smc);//饱和函数近似符号函数
             u =  smc->param.J * (smc->error.tar_differential - (smc->param.c * smc->error.v_error) - smc->param.K * smc->s - smc->param.epsilon * fun); //控制律计算，速度环
             break;
             
         case EISMC:///积分滑模面，指数趋近律，位置环
-            if (fabs(smc->error.p_error) - smc->error.pos_error_eps < 0)
+            if (fabsf(smc->error.p_error) - smc->error.pos_error_eps < 0)
             {
                 smc->error.p_error = 0;
                 return 0;
             }
             
             smc->s = smc->param.c1 * smc->error.p_error + smc->error.v_error + smc->param.c2 * smc->error.p_error_integral; //滑模面
-            fun = Sat(smc);//饱和函数近似符号函数
+            fun = sat(smc);//饱和函数近似符号函数
             u =  smc->param.J * ( (-smc->param.c1 * smc->error.v_error)- smc->param.c2 * smc->error.p_error - smc->param.K * smc->s - smc->param.epsilon * fun); //控制律计算,指数趋近律
             break;
     }
@@ -280,7 +281,7 @@ fp32 SMC_calc(Sliding *smc)
   * @param[out]     smc: 滑模控制器结构数据指针
   * @retval         none
   */
-void OutContinuation(Sliding *smc)
+void outContinuation(Sliding *smc)
 {
     if(smc->param.K != 0 && smc->param.c2 != 0)
     {
@@ -310,11 +311,11 @@ fp32 Signal(fp32 s)
   * @param[in]      s: 滑模面
   * @retval         饱和后的值
   */
-fp32 Sat(Sliding *smc)
+fp32 sat(Sliding *smc)
 {
     float y;
     y = smc->s / smc->param.epsilon;
-    if (fabs(y) <= smc->limit)
+    if (fabsf(y) <= smc->limit)
         return y;
     else
         return Signal(y);

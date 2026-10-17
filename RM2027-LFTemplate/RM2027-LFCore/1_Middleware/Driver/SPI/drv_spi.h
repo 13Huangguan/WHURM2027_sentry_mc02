@@ -16,12 +16,11 @@
 #ifndef DRV_SPI_H
 #define DRV_SPI_H
 
-
 /* Include------------------------------------------------------------------*/
-#include "stm32h7xx.h"
 #include "arm_math.h"
+#include "stm32h7xx.h"
 
 /* Externs ------------------------------------------------------------------*/
-extern uint8_t BMI088_Read_Write_Byte(uint8_t Tx_Data);
+extern uint8_t bmi088ReadWriteByte(uint8_t tx_data);
 
 #endif

@@ -116,7 +116,7 @@ typedef struct {
   * @param[in]      pos_esp: 误差阈值
   * @retval         none
   */
-extern void SMC_init(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, float u_max, float pos_esp);
+extern void smcInit(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, float u_max, float pos_esp);
 
 /**
   * @brief          滑模控制器参数设置
@@ -128,7 +128,7 @@ extern void SMC_init(Sliding *smc, const fp32 param_list[9], Rmode flag, float l
   * @param[in]      pos_esp: 误差阈值
   * @retval         none
   */
-extern void SMC_setParam(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, float u_max, float pos_esp);
+extern void smcSetParam(Sliding *smc, const fp32 param_list[9], Rmode flag, float limit, float u_max, float pos_esp);
 
 /**
   * @brief          滑模控制器位置误差更新
@@ -139,7 +139,7 @@ extern void SMC_setParam(Sliding *smc, const fp32 param_list[9], Rmode flag, flo
   * @param[in]      sample_period: 采样周期(s)
   * @retval         none
   */
-extern void SMC_posErrorUpdate(Sliding *smc, fp32 target, fp32 pos_now, fp32 vol_now, fp32 sample_period); 
+extern void smcPosErrorUpdate(Sliding *smc, fp32 target, fp32 pos_now, fp32 vol_now, fp32 sample_period); 
 
 /**
   * @brief          滑模控制器速度误差更新
@@ -149,21 +149,21 @@ extern void SMC_posErrorUpdate(Sliding *smc, fp32 target, fp32 pos_now, fp32 vol
   * @param[in]      sample_period: 采样周期(s)
   * @retval         none
   */
-extern void SMC_volErrorUpdate(Sliding *smc, fp32 target, fp32 vol_now, fp32 sample_period);
+extern void smcVolErrorUpdate(Sliding *smc, fp32 target, fp32 vol_now, fp32 sample_period);
 
 /**
   * @brief          滑模控制器输出清除
   * @param[out]     smc: 滑模控制器结构数据指针
   * @retval         none
   */
-extern void SMC_clear(Sliding *smc);
+extern void smcClear(Sliding *smc);
 
 /**
   * @brief          滑模控制器积分值清除
   * @param[out]     smc: 滑模控制器结构数据指针
   * @retval         none
   */
-extern void SMC_intgValClear(Sliding *smc);
+extern void smcIntgValClear(Sliding *smc);
 
 /**
   * @brief          滑模控制器计算
@@ -172,14 +172,14 @@ extern void SMC_intgValClear(Sliding *smc);
   * @param[in]      angle_vel: 当前角速度
   * @retval         none
   */
-extern fp32 SMC_calc(Sliding *smc);
+extern fp32 smcCalc(Sliding *smc);
 
 /**
   * @brief          滑模控制器输出连续性处理
   * @param[out]     smc: 滑模控制器结构数据指针
   * @retval         none
   */
-extern void OutContinuation(Sliding *smc);
+extern void outContinuation(Sliding *smc);
 
 /**
   * @brief          滑模控制器符号函数
@@ -193,6 +193,6 @@ extern fp32 Signal(fp32 s);
   * @param[in]      s: 滑模面
   * @retval         饱和后的值
   */
-extern fp32 Sat(Sliding *smc);
+extern fp32 sat(Sliding *smc);
 
 #endif

@@ -1,5 +1,5 @@
 /**
- * @file alg_basic.h
+ * @file alg_basic.hpp
  * @author Bayekq
  * @brief 一些极其简易的数学（使用小驼峰命名）
  * @version 1.0
@@ -9,29 +9,34 @@
  *
  */
 
-
-#ifndef ALG_BASIC_H
-#define ALG_BASIC_H
+#ifndef ALG_BASIC_HPP
+    #define ALG_BASIC_HPP
 
 /* Includes ------------------------------------------------------------------*/
 
-#include <float.h>
+    #include <float.h>
 
-#include "arm_math.h"
+    #include "arm_math.h"
 
 /* Exported macros -----------------------------------------------------------*/
-
-extern const float BasicMathRpmToRadps;
-extern const float BasicMathDegToRad;
-extern const float BasicMathCelsiusToKelvin;
+/**
+ * @brief Matrix operations are provided by mat_matrix.hpp.
+ */
 
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported variables --------------------------------------------------------*/
 
+extern const float BASIC_MATH_RPM_TO_RADPS;
+extern const float BASIC_MATH_DEG_TO_RAD;
+extern const float BASIC_MATH_RAD_TO_DEG;
+extern const float BASIC_MATH_CELSIUS_TO_KELVIN;
+
 /* Exported function declarations --------------------------------------------*/
 
 namespace basic_math {
+
+float inverseSqrt(float value);
 
 void booleanLogicalNot(bool* value);
 
@@ -51,11 +56,9 @@ uint32_t sum32(const uint32_t* address, uint32_t length);
 
 float sinc(float x);
 
-int32_t floatToInt(float x, float float1, float float2,
-                   int32_t int1, int32_t int2);
+int32_t floatToInt(float x, float float1, float float2, int32_t int1, int32_t int2);
 
-float intToFloat(int32_t x, int32_t int1, int32_t int2,
-                 float float1, float float2);
+float intToFloat(int32_t x, int32_t int1, int32_t int2, float float1, float float2);
 
 bool isInvalidFloat(float x);
 
@@ -70,14 +73,14 @@ float modulusNormalization(float x, float modulus);
  * @param max 最大值
  * @return 输出值
  */
-template <typename Type>
+template<typename Type>
 Type constrain(Type x, Type min, Type max) {
-  if (x < min) {
-    x = min;
-  } else if (x > max) {
-    x = max;
-  }
-  return (x);
+    if (x < min) {
+        x = min;
+    } else if (x > max) {
+        x = max;
+    }
+    return x;
 }
 
 /**
@@ -89,14 +92,14 @@ Type constrain(Type x, Type min, Type max) {
  * @param max 最大值
  * @return 输出值
  */
-template <typename Type>
+template<typename Type>
 Type constrain(Type* x, Type min, Type max) {
-  if (*x < min) {
-    *x = min;
-  } else if (*x > max) {
-    *x = max;
-  }
-  return (*x);
+    if (*x < min) {
+        *x = min;
+    } else if (*x > max) {
+        *x = max;
+    }
+    return *x;
 }
 
 /**
@@ -106,9 +109,9 @@ Type constrain(Type* x, Type min, Type max) {
  * @param x 传入数据
  * @return Type x的绝对值
  */
-template <typename Type>
+template<typename Type>
 Type abs(Type x) {
-  return ((x > 0) ? x : -x);
+    return (x > 0) ? x : -x;
 }
 
 /**
@@ -118,14 +121,14 @@ Type abs(Type x) {
  * @param x 传入数据
  * @return int8_t 返回 1 / 0 / -1
  */
-template <typename Type>
+template<typename Type>
 int8_t sign(Type x) {
-  if (x > 0) {
-    return (1);
-  } else if (x < 0) {
-    return (-1);
-  }
-  return (0);
+    if (x > 0) {
+        return 1;
+    } else if (x < 0) {
+        return -1;
+    }
+    return 0;
 }
 
 /**
@@ -143,7 +146,7 @@ float sin(float x);
  * @return float cos(x)
  */
 float cos(float x);
-}  // namespace basic_math
+} // namespace basic_math
 
 #endif
 

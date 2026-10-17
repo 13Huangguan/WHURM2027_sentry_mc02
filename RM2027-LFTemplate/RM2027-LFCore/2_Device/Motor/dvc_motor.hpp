@@ -48,7 +48,7 @@ struct DJI_Motor_Data_Typedef{
     int16_t Velocity;     /*!< 转速, rpm */
     int16_t Encoder;      /*!< 编码器原始值 */
     int16_t Last_Encoder;  /*!< 上次编码器值 */
-    float Angle;          /*!< 角度, deg */
+    float angle;          /*!< 角度, deg */
     uint8_t Temperature;  /*!< 温度 */
 };
 
@@ -61,10 +61,10 @@ public:
     DJI_Motor_Info_Class();
 
     /** @brief 配置电机类型与 CAN 收发标识符 */
-    void Motor_Init(DJI_Motor_Type_e type, uint32_t txIdentifier, uint32_t rxIdentifier);
+    void motorInit(DJI_Motor_Type_e type, uint32_t txIdentifier, uint32_t rxIdentifier);
 
     /** @brief 用一帧 CAN 数据刷新电机状态 */
-    void Motor_Update(uint32_t identifier, const uint8_t *rxBuffer);
+    void motorUpdate(uint32_t identifier, const uint8_t *rxBuffer);
 
     /**
      * @brief 把 4 台 DJI 电机的电流打包成一帧发送
@@ -74,7 +74,7 @@ public:
      *                   或 GM6020 的 ID 1~4）、0x2FF（GM6020 的 ID 5~7）
      * @param current    4 台电机的电流，范围 -16384 ~ 16384
      */
-    static void sendCurrent(FDCAN_TxFrame_TypeDef *txFrame, uint32_t identifier, const int16_t current[4]);
+    static void sendCurrent(FdcanTxFrame *txFrame, uint32_t identifier, const int16_t current[4]);
 
     bool isInitialized() const;
     DJI_Motor_Type_e getType() const;
@@ -83,13 +83,13 @@ public:
 
 private:
     /** @brief 编码器值换算为累计角度, deg */
-    float DJI_Motor_Encoder_To_Anglesum(float torqueRatio, uint16_t maxEncoder);
+    float djiMotorEncoderToAnglesum(float torqueRatio, uint16_t maxEncoder);
 
     /** @brief 编码器值换算为 -180~180 角度, deg */
-    float DJI_Motor_Encoder_To_Angle(float torqueRatio, uint16_t maxEncoder);
+    float djiMotorEncoderToAngle(float torqueRatio, uint16_t maxEncoder);
 
     /** @brief 把角度循环限制到 [minValue, maxValue] */
-    static float F_Loop_Constrain(float input, float minValue, float maxValue);
+    static float fLoopConstrain(float input, float minValue, float maxValue);
 
     DJI_Motor_Type_e type;
     Motor_CANFrameInfo_typedef canFrame;
@@ -138,7 +138,7 @@ struct DM_Motor_Data_Typedef{
     float Torque;            /*!< 扭矩 */
     float Temperature_MOS;    /*!< MOS 温度 */
     float Temperature_Rotor;  /*!< 线圈温度 */
-    float Angle;             /*!< 角度, deg */
+    float angle;             /*!< 角度, deg */
 };
 
 /** @brief 达妙电机控制量 */
@@ -148,7 +148,7 @@ struct DM_Motor_Contorl_Info_Typedef {
     float KP;        /*!< 位置增益 */
     float KD;        /*!< 速度增益 */
     float Torque;    /*!< 前馈扭矩 */
-    float Angle;     /*!< 目标角度, deg */
+    float angle;     /*!< 目标角度, deg */
 };
 
 /**
@@ -165,19 +165,19 @@ public:
               uint32_t rxIdentifier);
 
     /** @brief 用一帧 CAN 数据刷新电机状态 */
-    void DM_Motor_Info_Update(uint32_t identifier, const uint8_t *rxBuffer);
+    void dmMotorInfoUpdate(uint32_t identifier, const uint8_t *rxBuffer);
 
     /** @brief 发送使能/失能/保存零点指令 */
-    void DM_Motor_Command(FDCAN_TxFrame_TypeDef *txFrame, DM_Motor_CMD_Type_e command);
+    void dmMotorCommand(FdcanTxFrame *txFrame, DM_Motor_CMD_Type_e command);
 
     /** @brief MIT 模式发送控制量 */
-    void DM_Motor_MIT_Send(FDCAN_TxFrame_TypeDef *txFrame, const DM_Motor_Contorl_Info_Typedef &control);
+    void dmMotorMitSend(FdcanTxFrame *txFrame, const DM_Motor_Contorl_Info_Typedef &control);
 
     /** @brief 位置-速度模式发送控制量 */
-    void DM_Motor_POSITION_VELOCITY_Send(FDCAN_TxFrame_TypeDef *txFrame, float position, float velocity);
+    void dmMotorPositionVelocitySend(FdcanTxFrame *txFrame, float position, float velocity);
 
     /** @brief 速度模式发送控制量 */
-    void DM_Motor_VELOCITY_Send(FDCAN_TxFrame_TypeDef *txFrame, float velocity);
+    void dmMotorVelocitySend(FdcanTxFrame *txFrame, float velocity);
 
     bool isInitialized() const;
     DM_Motor_Control_Mode_Type_e getControlMode() const;

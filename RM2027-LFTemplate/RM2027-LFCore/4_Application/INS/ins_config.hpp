@@ -17,43 +17,35 @@
 #define ROBOT_CONFIG_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "stdint.h"
+#include "alg_basic.hpp"
+#include "math.h"
 #include "stdbool.h"
+#include "stdint.h"
 #include "stdlib.h"
 #include "string.h"
-#include "math.h"
 
 /* General physics and mathematics constants ---------------------------------*/
 
 /**
  * @brief the value of local gravity acceleration
  */
- 
- #define VAL_LIMIT(x,min,max)  do{ \
-                                    if ((x) > (max)) {(x) = (max);} \
-                                    else if ((x) < (min)) {(x) = (min);} \
-                                }while(0U)
- 
-#define GravityAccel  9.79361f
 
-#define Angle_to_rad  0.01745329f
+#define GRAVITY_ACCEL 9.718f
 
-#define Rad_to_angle  57.2957732f 		
-																														
 /**
   * @brief Euler's Number
   */
-#define Euler_Number 2.718281828459045f
+#define EULER_NUMBER 2.718281828459045f
 
 /**
  * @brief radian system rotation degrees system , 180.f/PI
  */
-#define RadiansToDegrees 57.295779513f
+#define RADIANS_TO_DEGREES BASIC_MATH_RAD_TO_DEG
 
 /**
  * @brief degrees system rotation radian system , PI/180.f
  */
-#define DegreesToRadians 0.01745329251f
+#define DEGREES_TO_RADIANS BASIC_MATH_DEG_TO_RAD
 
 /* Vision reslove constants -------------------------------------------------*/
 
@@ -62,24 +54,24 @@
  *         0: select the minimum yaw armor
  *         1: select the minimum distance armor
  */
-#define Yaw_Distance_Decision  0
+#define YAW_DISTANCE_DECISION 0
 
 /**
  * @brief ballistic coefficient
  * @note  17mm: 0.038
  *        42mm: 0.019
  */
-#define Bullet_Coefficient  0.038f
+#define BULLET_COEFFICIENT 0.038f
 
 /**
  * @brief the half width of little armor
  */
-#define LittleArmor_HalfWidth   0.07f
+#define LITTLE_ARMOR_HALF_WIDTH 0.07f
 
 /**
  * @brief the half width of Large armor
  */
-#define LargeArmor_HalfWidth   0.1175f
+#define LARGE_ARMOR_HALF_WIDTH 0.1175f
 
 /* IMU reslove constants ---------------------------------------------------*/
 /**
@@ -87,46 +79,46 @@
  *        0: DISABLE
  *        1: ENABLE
  */
-#define IMU_Calibration_ENABLE  0U
+#define IMU_CALIBRATION_ENABLE 0U
 
 /**
  * @brief the index of pitch angle update
  */
-#define IMU_ANGLE_INDEX_PITCH  2U
+#define IMU_ANGLE_INDEX_PITCH 2U
 /**
  * @brief the index of yaw angle update
  */
-#define IMU_ANGLE_INDEX_YAW   0U
+#define IMU_ANGLE_INDEX_YAW 0U
 /**
  * @brief the index of roll angle update
  */
-#define IMU_ANGLE_INDEX_ROLL   1U
+#define IMU_ANGLE_INDEX_ROLL 1U
 
 /**
  * @brief the index of pitch gyro update
  */
-#define IMU_GYRO_INDEX_PITCH  0U
+#define IMU_GYRO_INDEX_PITCH 0U
 /**
  * @brief the index of yaw gyro update
  */
-#define IMU_GYRO_INDEX_YAW   2U
+#define IMU_GYRO_INDEX_YAW 2U
 /**
  * @brief the index of roll gyro update
  */
-#define IMU_GYRO_INDEX_ROLL   1U
+#define IMU_GYRO_INDEX_ROLL 1U
 
 /**
  * @brief the index of pitch accel update
  */
-#define IMU_ACCEL_INDEX_PITCH  0U
+#define IMU_ACCEL_INDEX_PITCH 0U
 /**
  * @brief the index of yaw accel update
  */
-#define IMU_ACCEL_INDEX_YAW   2U
+#define IMU_ACCEL_INDEX_YAW 2U
 /**
  * @brief the index of roll accel update
  */
-#define IMU_ACCEL_INDEX_ROLL   1U
+#define IMU_ACCEL_INDEX_ROLL 1U
 
 /* Remote reslove constants -----------------------------------------------*/
 /**
@@ -134,8 +126,6 @@
  * @note  0: CAN
  *        1: USART
  */
-#define REMOTE_FRAME_USART_CAN   0U
+#define REMOTE_FRAME_USART_CAN 0U
 
 #endif //ROBOT_CONFIG_H
-
-

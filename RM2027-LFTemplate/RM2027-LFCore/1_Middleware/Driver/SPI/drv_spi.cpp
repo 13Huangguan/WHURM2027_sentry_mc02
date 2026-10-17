@@ -14,6 +14,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "drv_spi.h"
+
 #include "spi.h"
 
 /**
@@ -21,11 +22,10 @@
   * @param Tx_Data: the specified data
   * @retval the spi receive data
   */
-uint8_t BMI088_Read_Write_Byte(uint8_t Tx_Data)
-{
-	  uint8_t Rx_Data = 0;
-		
-	  HAL_SPI_TransmitReceive(&hspi2,&Tx_Data,&Rx_Data,1,100);
-  
-    return Rx_Data;
+uint8_t bmi088ReadWriteByte(uint8_t tx_data) {
+    uint8_t rx_data = 0;
+
+    HAL_SPI_TransmitReceive(&hspi2, &tx_data, &rx_data, 1, 100);
+
+    return rx_data;
 }
