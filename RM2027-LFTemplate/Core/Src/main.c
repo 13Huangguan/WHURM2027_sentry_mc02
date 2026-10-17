@@ -31,6 +31,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "dvc_bsp.h"
+#include "app_chassis.h"
 #include "app_motor.h"
 #include "remote_control.h"
 /* USER CODE END Includes */
@@ -135,6 +136,7 @@ int main(void)
   bspInit();
   remote_control_init();
   Motor_Init();
+  Chassis_Init();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */
