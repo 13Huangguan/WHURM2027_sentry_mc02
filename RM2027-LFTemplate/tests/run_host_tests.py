@@ -8,7 +8,7 @@ CORE = ROOT / "RM2027-LFCore"
 OUTPUT = ROOT / "build" / "host_tests"
 OUTPUT.mkdir(parents=True, exist_ok=True)
 COMPILER = os.environ.get("HOST_CXX", "g++")
-INCLUDES = [ROOT / "tests/support", CORE / "1_Middleware/Matrix",
+INCLUDES = [ROOT / "tests/support", CORE / "1_Middleware/Algorithm/Matrix",
             CORE / "1_Middleware/Algorithm/Basic", CORE / "1_Middleware/Algorithm/Force",
             CORE / "1_Middleware/Algorithm/Kalman_Filter", CORE / "1_Middleware/Algorithm/LPF",
             CORE / "1_Middleware/Algorithm/Quatertion", CORE / "4_Application/INS",
@@ -24,7 +24,7 @@ def run_test(name, sources, flags=()):
 
 
 run_test("core_math_test", [ROOT / "tests/core_math_test.cpp",
-    CORE / "1_Middleware/Matrix/mat_matrix.cpp",
+    CORE / "1_Middleware/Algorithm/Matrix/mat_matrix.cpp",
     CORE / "1_Middleware/Algorithm/Basic/alg_basic.cpp",
     CORE / "1_Middleware/Algorithm/Force/alg_force.cpp",
     CORE / "1_Middleware/Algorithm/Kalman_Filter/alg_kalman_filter.cpp",

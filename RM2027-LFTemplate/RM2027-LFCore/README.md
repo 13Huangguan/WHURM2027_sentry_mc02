@@ -35,7 +35,7 @@ LFCore 内的 8 个 C 源文件已经迁移到 C++，生成的 HAL、USB 和 RTO
 
 ## 矩阵与滤波
 
-`1_Middleware/Matrix/mat_matrix.hpp/.cpp` 改编自
+`1_Middleware/Algorithm/Matrix/mat_matrix.hpp/.cpp` 改编自
 `Matrix_and_Robotics_on_STM32-main/src/matrix.h/.cpp` 的矩阵、向量部分，保留原作者
 Team JiaoLong-SJTU / Spoon Guan 的署名和 MIT 许可证（同目录 `LICENSE`）。
 运算内核复用工程现有 CMSIS-DSP；限幅、符号和单位转换复用 `alg_basic.hpp`，

@@ -14,7 +14,7 @@ RM2027-LFTemplate/
 │  ├─ 1_Middleware/
 │  │  ├─ Driver/                 CAN、UART、SPI、GPIO、Tick 驱动
 │  │  ├─ Algorithm/              基础数学、PID、SMC、LPF、Kalman、四元数、Force
-│  │  ├─ Matrix/                 固定尺寸矩阵与运行时矩阵视图
+│  │  │  └─ Matrix/              固定尺寸矩阵与运行时矩阵视图
 │  │  └─ Profiling/              可选 DWT 周期统计
 │  ├─ 2_Device/                  BMI088、遥控器、电机与设备扩展
 │  ├─ 3_LuojiaFox/               任务间共享的系统状态快照及 C/C++ 接口
@@ -43,7 +43,7 @@ RM2027-LFTemplate/
 - **扩展业务**：设备协议放在 `2_Device`，控制流程放在 `4_Application`；
   HAL 回调和生成代码调用的入口保持 C 链接，复用已有驱动、数学和矩阵接口。
 
-矩阵模块改编自 SJTU 交龙战队的矩阵/向量库，保留 [MIT 许可证](RM2027-LFTemplate/RM2027-LFCore/1_Middleware/Matrix/LICENSE)。
+矩阵模块改编自 SJTU 交龙战队的矩阵/向量库，保留 [MIT 许可证](RM2027-LFTemplate/RM2027-LFCore/1_Middleware/Algorithm/Matrix/LICENSE)。
 接口细节与性能说明见 [LFCore 文档](RM2027-LFTemplate/RM2027-LFCore/README.md)。
 
 ## 构建、验证与规范
