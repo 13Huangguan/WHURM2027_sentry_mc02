@@ -13,12 +13,9 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include "alg_lpf.h"
-#include "string.h"
+#include "alg_lpf.hpp"
 
-float sign(float input){
-   return (input>0.0f) - (input<0.0f);
-}
+#include "string.h"
 
 /**
   * @brief 初始化一阶低通滤波器.
@@ -27,11 +24,11 @@ float sign(float input){
   * @param Frame_Period: 采样周期.
   * @retval 无.
   */
-void LowPassFilter1p_Init(LowPassFilter1p_Info_TypeDef *LPF,float Alpha)
-{
-  LPF->Alpha = Alpha;
-  LPF->Input = 0;
-  LPF->Output = 0;
+void lowPassFilter1pInit(LowPassFilter1p* lpf, float alpha) {
+    lpf->initialized = false;
+    lpf->alpha = alpha;
+    lpf->input = 0;
+    lpf->output = 0;
 }
 
 /**
@@ -39,19 +36,17 @@ void LowPassFilter1p_Init(LowPassFilter1p_Info_TypeDef *LPF,float Alpha)
   * @param Input: 当前输入.
   * @retval 滤波器输出.
   */
-float LowPassFilter1p_Update(LowPassFilter1p_Info_TypeDef *LPF,float Input)
-{
-  LPF->Input = Input;
+float lowPassFilter1pUpdate(LowPassFilter1p* lpf, float input) {
+    lpf->input = input;
 
-  if(LPF->Initialized == false)
-  {
-    LPF->Output = LPF->Input;
-    LPF->Initialized = true;
-  }
+    if (lpf->initialized == false) {
+        lpf->output = lpf->input;
+        lpf->initialized = true;
+    }
 
-  LPF->Output = LPF->Alpha * LPF->Output + (1.f - LPF->Alpha) * LPF->Input;
+    lpf->output = lpf->alpha * lpf->output + (1.f - lpf->alpha) * lpf->input;
 
-  return LPF->Output;
+    return lpf->output;
 }
 
 /**
@@ -59,11 +54,11 @@ float LowPassFilter1p_Update(LowPassFilter1p_Info_TypeDef *LPF,float Input)
   * @param Alpha[3]: 滤波器系数[3].
   * @retval 无.
   */
-void LowPassFilter2p_Init(LowPassFilter2p_Info_TypeDef *LPF,float Alpha[3])
-{
-  memcpy(LPF->Alpha,Alpha,sizeof(LPF->Alpha));
-  LPF->Input = 0;
-  memset(LPF->Output,0,sizeof(LPF->Output));
+void lowPassFilter2pInit(LowPassFilter2p* lpf, const float alpha[3]) {
+    lpf->initialized = false;
+    memcpy(lpf->alpha, alpha, sizeof(lpf->alpha));
+    lpf->input = 0;
+    memset(lpf->output, 0, sizeof(lpf->output));
 }
 
 /**
@@ -71,21 +66,20 @@ void LowPassFilter2p_Init(LowPassFilter2p_Info_TypeDef *LPF,float Alpha[3])
   * @param Input: 当前输入.
   * @retval 滤波器输出.
   */
-float LowPassFilter2p_Update(LowPassFilter2p_Info_TypeDef *LPF,float Input)
-{
-  LPF->Input = Input;
+float lowPassFilter2pUpdate(LowPassFilter2p* lpf, float input) {
+    lpf->input = input;
 
-  if(LPF->Initialized == false)
-  {
-    LPF->Output[0] = LPF->Input;
-    LPF->Output[1] = LPF->Input;
-    LPF->Output[2] = LPF->Input;
-    LPF->Initialized = true;
-  }
+    if (lpf->initialized == false) {
+        lpf->output[0] = lpf->input;
+        lpf->output[1] = lpf->input;
+        lpf->output[2] = lpf->input;
+        lpf->initialized = true;
+    }
 
-  LPF->Output[0] = LPF->Output[1];
-  LPF->Output[1] = LPF->Output[2];
-  LPF->Output[2] = LPF->Alpha[0] * LPF->Output[1] + LPF->Alpha[1] * LPF->Output[0] + LPF->Alpha[2] * LPF->Input;
+    lpf->output[0] = lpf->output[1];
+    lpf->output[1] = lpf->output[2];
+    lpf->output[2] = lpf->alpha[0] * lpf->output[1] + lpf->alpha[1] * lpf->output[0]
+        + lpf->alpha[2] * lpf->input;
 
-  return LPF->Output[2];
+    return lpf->output[2];
 }

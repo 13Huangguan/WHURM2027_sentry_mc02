@@ -1,5 +1,3 @@
-#include "bmi088.h"
-
 #ifndef __DVC_BSP_H__
 #define __DVC_BSP_H__
 

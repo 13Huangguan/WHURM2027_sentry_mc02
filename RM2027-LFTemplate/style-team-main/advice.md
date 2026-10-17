@@ -7,7 +7,8 @@
  * 在以上情况中, 若使用缩写, 则仅大写缩写单词的首字母 `HttpRequest`。
  * 命名空间 `lower_case`，
  * 成员 `lower_case`，
- * 函数 `lower_case`，
+ * 函数及成员函数使用小驼峰 `lowerCamelCase`（clang-tidy：`camelBack`），如 `kalmanFilterUpdate`、`setDistribution`，
+ * HAL、CMSIS、FreeRTOS 回调及中断入口等外部 ABI 名称保留原名；构造和析构函数遵循类型名，
  * 变量 `lower_case`，
  * 宏 `UPPER_CASE`，
  * 全局常量 `UPPER_CASE`，

@@ -20,15 +20,15 @@ extern "C" {
 #endif
 
 /* Externs ------------------------------------------------------------------*/
-extern void BSP_GPIO_Init(void);
+extern void bspGpioInit(void);
 
-extern void BMI088_ACCEL_NS_L(void);
+extern void bmi088AccelNsL(void);
 
-extern void BMI088_ACCEL_NS_H(void);
+extern void bmi088AccelNsH(void);
 
-extern void BMI088_GYRO_NS_L(void);
+extern void bmi088GyroNsL(void);
 
-extern void BMI088_GYRO_NS_H(void);
+extern void bmi088GyroNsH(void);
 
 #ifdef __cplusplus
 }
