@@ -133,8 +133,8 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   bspInit();
-  remote_control_init();
-  Motor_Init();
+  remoteControlInit();
+  motorInit();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */

@@ -59,27 +59,6 @@ void SystemStateStore::updateReferee(const RefereeState &state)
     taskEXIT_CRITICAL();
 }
 
-void SystemStateStore::UpdateRobotCmd(const RobotCmdState &state)
-{
-    taskENTER_CRITICAL();
-    g_system_state.robot_cmd = state;
-    taskEXIT_CRITICAL();
-}
-
-void SystemStateStore::UpdateUsbLink(const UsbLinkState &state)
-{
-    taskENTER_CRITICAL();
-    g_system_state.usb_link = state;
-    taskEXIT_CRITICAL();
-}
-
-void SystemStateStore::UpdateVirtualRc(const VirtualRcState &state)
-{
-    taskENTER_CRITICAL();
-    g_system_state.virtual_rc = state;
-    taskEXIT_CRITICAL();
-}
-
 void SystemStateStore::updateRobotCmd(const RobotCmdState &state)
 {
     taskENTER_CRITICAL();

@@ -124,9 +124,11 @@ void motorControl(void)
     float rcValue = 0.0f;
     float speedTarget = 0.0f;
 
-    /* 只有遥控器在线且电机反馈正常时才允许输出速度指令 */
-    if (!remote_control.IsOffline() && g_pitchMotor.isInitialized()) {
-        rcValue = remote_control.GetRcCh(GM6020_RC_SPEED_CHANNEL);
+    /* 只有遥控器在线且电机反馈正常时才允许输出速度指令
+       合并后遥控器改成了自由函数接口：getRcOffline() 返回 true 表示掉线，
+       getDt7RcCh() 返回归一化后的 -1~1 通道值 */
+    if (!getRcOffline() && g_pitchMotor.isInitialized()) {
+        rcValue = getDt7RcCh(GM6020_RC_SPEED_CHANNEL);
         if (fabsf(rcValue) < GM6020_RC_SPEED_DEADZONE) {
             rcValue = 0.0f;
         }

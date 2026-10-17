@@ -85,7 +85,7 @@ struct UsbLinkState
 
 struct VirtualRcState
 {
-    RC_ctrl_t rc;
+    RcControl rc;
 };
 
 struct SystemStateSnapshot

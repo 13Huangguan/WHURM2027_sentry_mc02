@@ -26,7 +26,7 @@
 #include "protocol.h"
 
 #include "usb.hpp"
-#include "LF.hpp"
+#include "lf_core.hpp"
 
 extern UART_HandleTypeDef huart1;
 
@@ -86,7 +86,7 @@ extern "C" void referee_task(void const * argument)
 
         referee.UnpackFifoData();
 
-        LuojiaFox::system_state.UpdateReferee({
+        LuojiaFox::system_state.updateReferee({
           (uint16_t)referee.GetRobotId(),
           referee.GetCurrentHP(),
           !referee.IsOffline()

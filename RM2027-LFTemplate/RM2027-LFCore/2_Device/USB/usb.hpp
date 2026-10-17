@@ -180,7 +180,7 @@ private:
 
     /* 控制指令数据 */
     RobotCmdData_t robot_cmd;
-    RC_ctrl_t virtual_rc;
+    RcControl virtual_rc;
     uint32_t sentry_cmd;
     Detailed_SentryCmd_t sentry_cmd_detailed;
 

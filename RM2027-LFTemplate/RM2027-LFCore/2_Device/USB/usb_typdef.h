@@ -465,7 +465,7 @@ typedef struct
 {
     FrameHeader_t frame_header;  // 数据段id = 0x03
     uint32_t time_stamp;
-    RC_ctrl_t data;
+    RcControl data;
     uint16_t crc;
 } __packed__ ReceiveDataVirtualRc_s;
 

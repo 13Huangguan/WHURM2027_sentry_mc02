@@ -28,7 +28,7 @@
 #include "usbd_cdc_if.h"
 #include "usbd_conf.h"
 #include "referee.hpp"
-#include "LF.hpp"
+#include "lf_core.hpp"
 
 #define USB_LINK_TIMEOUT_MS 100  // ms
 #define USB_CONNECT_CNT 10
@@ -90,7 +90,7 @@ void Usb::Update(void)
         continue_receive_cnt++;
     }
 
-    LuojiaFox::system_state.UpdateUsbLink({offline != 0});
+    LuojiaFox::system_state.updateUsbLink({offline != 0});
 }
 
 /*******************************************************************************/
@@ -110,7 +110,7 @@ void Usb::Init(void)
     memset(&receive_pid_debug, 0, sizeof(ReceiveDataPidDebug_s));
     memset(&receive_virtual_rc, 0, sizeof(ReceiveDataVirtualRc_s));
     memset(&robot_cmd, 0, sizeof(RobotCmdData_t));
-    memset(&virtual_rc, 0, sizeof(RC_ctrl_t));
+    memset(&virtual_rc, 0, sizeof(RcControl));
 
     /*******************************************************************************/
     /* Serial                                                                     */
@@ -397,7 +397,7 @@ void Usb::SendDebug(void)
  */
 void Usb::SendImu(void)
 {
-    LuojiaFox::ImuState imu = LuojiaFox::system_state.Read().imu;
+    LuojiaFox::ImuState imu = LuojiaFox::system_state.read().imu;
 
     send_imu.time_stamp = HAL_GetTick();
 
@@ -497,7 +497,7 @@ void Usb::SendGameStatus(void)
  */
 void Usb::SendRobotMotion(void)
 {
-    LuojiaFox::ChassisState fdb_speed_vector = LuojiaFox::system_state.Read().chassis;
+    LuojiaFox::ChassisState fdb_speed_vector = LuojiaFox::system_state.read().chassis;
 
     send_robot_motion.time_stamp = HAL_GetTick();
 
@@ -701,14 +701,14 @@ void Usb::UpdateRobotCmd(void)
     cmd.fire = robot_cmd.shoot.fire;
     cmd.fric_on = robot_cmd.shoot.fric_on;
 
-    LuojiaFox::system_state.UpdateRobotCmd(cmd);
+    LuojiaFox::system_state.updateRobotCmd(cmd);
 }
 
 void Usb::UpdateVirtualRc(void)
 {
-    memcpy(&virtual_rc, &receive_virtual_rc.data, sizeof(RC_ctrl_t));
+    memcpy(&virtual_rc, &receive_virtual_rc.data, sizeof(RcControl));
 
-    LuojiaFox::system_state.UpdateVirtualRc({virtual_rc});
+    LuojiaFox::system_state.updateVirtualRc({virtual_rc});
 }
 
 void Usb::UpdateSentryCmd(void)

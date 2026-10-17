@@ -40,7 +40,7 @@ uartSendTxMessage(UART_HandleTypeDef* huart, uint8_t* p_data, uint16_t size, uin
  * @param dma_buf_num DMA接收长度
  * @return 
  */
-void usart1_init(uint8_t *rx1_buf, uint8_t *rx2_buf, uint16_t dma_buf_num)
+extern "C" void usart1_init(uint8_t *rx1_buf, uint8_t *rx2_buf, uint16_t dma_buf_num)
 {
 
     //enable the DMA transfer for the receiver and tramsmit request
