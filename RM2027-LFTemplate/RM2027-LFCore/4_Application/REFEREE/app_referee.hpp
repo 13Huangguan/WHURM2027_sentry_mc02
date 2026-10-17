@@ -1,8 +1,8 @@
 /**
   ****************************(C) COPYRIGHT 2019 DJI****************************
-  * @file       referee_usart_task.c/h
+  * @file       app_referee.cpp/hpp
   * @brief      RM referee system data solve. RM裁判系统数据处理
-  * @note       
+  * @note
   * @history
   *  Version    Date            Author          Modification
   *  V1.0.0     Nov-11-2019     RM              1. done
@@ -14,12 +14,11 @@
   @endverbatim
   ****************************(C) COPYRIGHT 2019 DJI****************************
   */
-#ifndef APP_REFEREE_H
-#define APP_REFEREE_H
-#include "main.h"
+#ifndef APP_REFEREE_HPP
+#define APP_REFEREE_HPP
 
-#define USART_RX_BUF_LENGHT     512
-#define REFEREE_FIFO_BUF_LENGTH 1024
+#include "main.h"
+#include "referee.hpp"
 
 typedef struct __packed
 {
@@ -38,15 +37,8 @@ typedef struct __packed
   * @brief          裁判系统任务
   * @param[in]      pvParameters: NULL
   * @retval         none
+  * @note           线程在 Core/Src/freertos.c（C 文件）里注册，必须保持 C 链接。
   */
-extern void referee_task(void const * argument);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-extern void LF_UpdateReferee(uint16_t robot_id, uint16_t remaining_hp, uint8_t connected);
-#ifdef __cplusplus
-}
-#endif
+extern "C" void referee_task(void const * argument);
 
 #endif

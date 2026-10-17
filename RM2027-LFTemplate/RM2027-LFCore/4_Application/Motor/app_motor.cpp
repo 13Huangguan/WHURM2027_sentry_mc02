@@ -124,8 +124,8 @@ void Motor_Control(void)
     float speedTarget = 0.0f;
 
     /* 只有遥控器在线且电机反馈正常时才允许输出速度指令 */
-    if (!GetRcOffline() && g_pitchMotor.isInitialized()) {
-        rcValue = GetDt7RcCh(GM6020_RC_SPEED_CHANNEL);
+    if (!remote_control.IsOffline() && g_pitchMotor.isInitialized()) {
+        rcValue = remote_control.GetRcCh(GM6020_RC_SPEED_CHANNEL);
         if (fabsf(rcValue) < GM6020_RC_SPEED_DEADZONE) {
             rcValue = 0.0f;
         }
@@ -140,7 +140,7 @@ void Motor_Control(void)
     int16_t pitchOut = (int16_t)pitchSpeedPid.getOut();
     // int16_t pitchOut = 0;
 
-    // if (!GetRcOffline() && g_pitchMotor.isInitialized()) {
+    // if (!remote_control.IsOffline() && g_pitchMotor.isInitialized()) {
     // SMC_volErrorUpdate(
     //     &speedSmc,
     //     speedTarget,                              // 目标转速，单位 rpm

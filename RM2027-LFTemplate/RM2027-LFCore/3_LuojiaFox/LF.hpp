@@ -14,6 +14,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
 
+#include "remote_control.h"
+
 /* Exported macros -----------------------------------------------------------*/
 
 /* Exported types ------------------------------------------------------------*/
@@ -31,6 +33,13 @@ struct ImuState
     float yaw_rate_dps;
     float pitch_rate_dps;
     float roll_rate_dps;
+};
+
+struct ChassisState
+{
+    float vx;
+    float vy;
+    float wz;
 };
 
 struct GimbalState
@@ -54,12 +63,41 @@ struct RefereeState
     bool connected;
 };
 
+struct RobotCmdState
+{
+    float vx;
+    float vy;
+    float wz;
+    float chassis_roll;
+    float chassis_pitch;
+    float chassis_yaw;
+    float chassis_leg_length;
+    float gimbal_pitch;
+    float gimbal_yaw;
+    uint8_t fire;
+    uint8_t fric_on;
+};
+
+struct UsbLinkState
+{
+    bool offline;
+};
+
+struct VirtualRcState
+{
+    RC_ctrl_t rc;
+};
+
 struct SystemStateSnapshot
 {
     ImuState imu;
+    ChassisState chassis;
     GimbalState gimbal;
     ShooterState shooter;
     RefereeState referee;
+    RobotCmdState robot_cmd;
+    UsbLinkState usb_link;
+    VirtualRcState virtual_rc;
 };
 
 class SystemStateStore
@@ -67,9 +105,13 @@ class SystemStateStore
 public:
     // Call these methods from FreeRTOS task context, not from an ISR.
     void UpdateImu(const ImuState &state);
+    void UpdateChassis(const ChassisState &state);
     void UpdateGimbal(const GimbalState &state);
     void UpdateShooter(const ShooterState &state);
     void UpdateReferee(const RefereeState &state);
+    void UpdateRobotCmd(const RobotCmdState &state);
+    void UpdateUsbLink(const UsbLinkState &state);
+    void UpdateVirtualRc(const VirtualRcState &state);
     SystemStateSnapshot Read() const;
 };
 

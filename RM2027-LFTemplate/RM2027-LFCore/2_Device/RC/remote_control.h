@@ -82,6 +82,13 @@
 
 #define RC_TO_ONE 0.0015151515151515f  // (1/660)遥控器通道值归一化系数
 
+// 遥控器掉线时间阈值
+#define RC_LOST_TIME 100  // ms
+// 非dt7遥控器连续断线上线次数（超过认为断连）
+#define SBUS_MAX_LOST_NUN 10
+//遥控器出错数据上限
+#define RC_CHANNAL_ERROR_VALUE 700
+
 /* ----------------------- RC Switch Definition----------------------------- */
 #define RC_SW_UP                ((uint16_t)1)
 #define RC_SW_MID               ((uint16_t)3)
@@ -168,27 +175,83 @@ typedef struct
 
 /* ----------------------- Internal Data ----------------------------------- */
 
-extern void remote_control_init(void);
-extern const RC_ctrl_t * get_remote_control_point(void);
-extern const Sbus_t *get_sbus_point(void);
-extern uint8_t RC_data_is_error(void);
-extern void slove_RC_lost(void);
-extern void slove_data_error(void);
-//extern void sbus_to_usart1(uint8_t * sbus);
+#ifdef __cplusplus
 
-/******************************************************************/
-/* API                                                            */
-/******************************************************************/
+class RemoteControl
+{
+public:
+    /* 遥控器控制变量 */
+    RC_ctrl_t rc_ctrl;
+    Sbus_t sbus;
+
+    /* 生命周期 */
+    void Init(void);
+
+    /* 数据查询 */
+    const RC_ctrl_t *GetCtrlPoint(void);
+    const Sbus_t *GetSbusPoint(void);
+    uint8_t DataIsError(void);
+    void SolveRcLost(void);
+    void SolveDataError(void);
+
+    /* 串口中断的实际处理逻辑 */
+    void OnUart5Irq(void);
+
+    /******************************************************************/
+    /* API                                                            */
+    /*----------------------------------------------------------------*/
+    /* function:      IsOffline                                       */
+    /*                GetRcCh                                         */
+    /*                GetRcSw                                         */
+    /*                GetMouseSpeed                                   */
+    /*                GetMouse                                        */
+    /*                GetKeyboard                                     */
+    /******************************************************************/
+    bool IsOffline(void);
+    float GetRcCh(uint8_t ch);
+    char GetRcSw(uint8_t sw);
+    float GetMouseSpeed(uint8_t axis);
+    bool GetMouse(uint8_t key);
+    bool GetKeyboard(uint8_t key);
+
+private:
+    /* 接收原始数据，为18个字节，给了36个字节长度，防止DMA传输越界 */
+    uint8_t sbus_rx_buf[2][SBUS_RX_BUF_NUM];
+
+    /* 上一次接收数据的时间 */
+    uint32_t last_receive_time = 0;
+    /* 记录连续接收数据的次数 */
+    uint32_t receive_count = 0;
+    /* 记录非dt7的sbus遥控器连续断连次数 */
+    uint32_t sbus_lost_count = SBUS_MAX_LOST_NUN + 5;
+
+#if (__RC_TYPE != RC_DT7)
+    uint8_t connected_flag = 0;  /* 遥控器连接标志位 */
+#endif  // __RC_TYPE != RC_DT7
+
+    /* 取正函数 */
+    static int16_t RC_abs(int16_t value);
+
+    void sbus_to_rc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
+#if (__RC_TYPE == RC_AT9S_PRO)
+    void At9sProSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
+#elif (__RC_TYPE == RC_HT8A)
+    void Ht8aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
+#elif (__RC_TYPE == RC_ET08A)
+    void Et08aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
+#endif
+};
+
+extern RemoteControl remote_control;
+
+#endif  /* __cplusplus */
+
+/* main.c 和中断向量表按符号名引用，必须保持 C 链接 */
 #ifdef __cplusplus
 extern "C" {
 #endif
-extern inline bool GetRcOffline(void);
-
-extern inline float GetDt7RcCh(uint8_t ch);
-extern inline char GetDt7RcSw(uint8_t sw);
-extern inline float GetDt7MouseSpeed(uint8_t axis);
-extern inline bool GetDt7Mouse(uint8_t key);
-extern inline bool GetDt7Keyboard(uint8_t key);
+extern void remote_control_init(void);
+extern void UART5_IRQHandler(void);
 #ifdef __cplusplus
 }
 #endif

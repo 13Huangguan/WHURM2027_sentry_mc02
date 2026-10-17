@@ -14,8 +14,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "app_referee.h"
-
 extern "C" {
 LuojiaFox::SystemStateSnapshot g_system_state{};
 }
@@ -28,6 +26,13 @@ void SystemStateStore::UpdateImu(const ImuState &state)
 {
     taskENTER_CRITICAL();
     g_system_state.imu = state;
+    taskEXIT_CRITICAL();
+}
+
+void SystemStateStore::UpdateChassis(const ChassisState &state)
+{
+    taskENTER_CRITICAL();
+    g_system_state.chassis = state;
     taskEXIT_CRITICAL();
 }
 
@@ -52,6 +57,27 @@ void SystemStateStore::UpdateReferee(const RefereeState &state)
     taskEXIT_CRITICAL();
 }
 
+void SystemStateStore::UpdateRobotCmd(const RobotCmdState &state)
+{
+    taskENTER_CRITICAL();
+    g_system_state.robot_cmd = state;
+    taskEXIT_CRITICAL();
+}
+
+void SystemStateStore::UpdateUsbLink(const UsbLinkState &state)
+{
+    taskENTER_CRITICAL();
+    g_system_state.usb_link = state;
+    taskEXIT_CRITICAL();
+}
+
+void SystemStateStore::UpdateVirtualRc(const VirtualRcState &state)
+{
+    taskENTER_CRITICAL();
+    g_system_state.virtual_rc = state;
+    taskEXIT_CRITICAL();
+}
+
 SystemStateSnapshot SystemStateStore::Read() const
 {
     taskENTER_CRITICAL();
@@ -61,14 +87,3 @@ SystemStateSnapshot SystemStateStore::Read() const
 }
 
 } // namespace LuojiaFox
-
-extern "C" void LF_UpdateReferee(uint16_t robot_id, uint16_t remaining_hp, uint8_t connected)
-{
-    LuojiaFox::RefereeState state;
-
-    state.robot_id     = robot_id;
-    state.remaining_hp = remaining_hp;
-    state.connected    = (connected != 0U);
-
-    LuojiaFox::system_state.UpdateReferee(state);
-}

@@ -70,6 +70,10 @@ uint32_t REFEREE_TaskBuffer[512];
 osStaticThreadDef_t REFEREE_TaskControlBlock;
 osThreadId referee_usart_task_handle;
 
+uint32_t USB_TaskBuffer[1024];
+osStaticThreadDef_t USB_TaskControlBlock;
+osThreadId usb_task_handle;
+
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 
@@ -82,6 +86,7 @@ void Detect_Task(void const * argument);
 void MiniPC_Task(void const * argument);
 void Shoot_Task(void const * argument);
 void referee_task(void const * argument);
+void usb_task(void const * argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -157,6 +162,9 @@ void MX_FREERTOS_Init(void) {
   /* 静态任务声明 */
   osThreadStaticDef(REFEREE, referee_task, osPriorityNormal, 0, 512, REFEREE_TaskBuffer, &REFEREE_TaskControlBlock);
   referee_usart_task_handle = osThreadCreate(osThread(REFEREE), NULL);
+
+  osThreadStaticDef(USB, usb_task, osPriorityNormal, 0, 1024, USB_TaskBuffer, &USB_TaskControlBlock);
+  usb_task_handle = osThreadCreate(osThread(USB), NULL);
    /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 }

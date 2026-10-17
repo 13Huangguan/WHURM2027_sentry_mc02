@@ -42,61 +42,12 @@
 //#include "robot_param.h"
 //#include "communication.h"
 
-// 遥控器掉线时间阈值
-#define RC_LOST_TIME 100  // ms
-// 非dt7遥控器连续断线上线次数（超过认为断连）
-#define SBUS_MAX_LOST_NUN 10
-
-//遥控器出错数据上限
-#define RC_CHANNAL_ERROR_VALUE 700
-
 extern UART_HandleTypeDef huart5;
 extern DMA_HandleTypeDef hdma_uart5_rx;
 
-
-//取正函数
-static int16_t RC_abs(int16_t value);
-/**
-  * @brief          remote control protocol resolution
-  * @param[in]      sbus_buf: raw data point
-  * @param[out]     rc_ctrl: remote control data struct point
-  * @retval         none
-  */
-/**
-  * @brief          遥控器协议解析
-  * @param[in]      sbus_buf: 原生数据指针
-  * @param[out]     rc_ctrl: 遥控器数据指
-  * @retval         none
-  */
-static void sbus_to_rc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
-
-#if (__RC_TYPE == RC_AT9S_PRO)
-static void At9sProSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
-#elif (__RC_TYPE == RC_HT8A)
-static void Ht8aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
-#elif (__RC_TYPE == RC_ET08A)
-static void Et08aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl);
-#endif
-
-//remote control data 
+//remote control data
 //遥控器控制变量
-RC_ctrl_t rc_ctrl;
-Sbus_t sbus = {.connect_flag = 0xFF};
-
-//接收原始数据，为18个字节，给了36个字节长度，防止DMA传输越界
-static uint8_t sbus_rx_buf[2][SBUS_RX_BUF_NUM];
-
-// 上一次接收数据的时间
-static uint32_t last_receive_time = 0;
-// 记录连续接收数据的次数
-static uint32_t receive_count = 0;
-// 记录非dt7的sbus遥控器连续断连次数
-static uint32_t sbus_lost_count = SBUS_MAX_LOST_NUN + 5;
-
-
-#if (__RC_TYPE != RC_DT7)
-uint8_t connected_flag;  // 遥控器连接标志位
-#endif  // __RC_TYPE != RC_DT7
+RemoteControl remote_control;
 
 /**
   * @brief          remote control init
@@ -108,8 +59,10 @@ uint8_t connected_flag;  // 遥控器连接标志位
   * @param[in]      none
   * @retval         none
   */
-void remote_control_init(void)
+void RemoteControl::Init(void)
 {
+    sbus.connect_flag = 0xFF;
+
     RC_Init(sbus_rx_buf[0], sbus_rx_buf[1], SBUS_RX_BUF_NUM);
 #if (__RC_TYPE == RC_AT9S_PRO)
     connected_flag = AT9S_PRO_RC_CONNECTED_FLAG;
@@ -118,6 +71,12 @@ void remote_control_init(void)
 #elif (__RC_TYPE == RC_ET08A)
     connected_flag = ET08A_RC_CONNECTED_FLAG;
 #endif
+}
+
+/* Core/Src/main.c 里调用，必须保持 C 链接 */
+extern "C" void remote_control_init(void)
+{
+    remote_control.Init();
 }
 /**
   * @brief          get remote control data point
@@ -129,7 +88,7 @@ void remote_control_init(void)
   * @param[in]      none
   * @retval         遥控器数据指针
   */
-const RC_ctrl_t *get_remote_control_point(void)
+const RC_ctrl_t *RemoteControl::GetCtrlPoint(void)
 {
     return &rc_ctrl;
 }
@@ -139,13 +98,13 @@ const RC_ctrl_t *get_remote_control_point(void)
   * @param[in]      none
   * @retval         SBUS遥控器数据指针
   */
-const Sbus_t *get_sbus_point(void)
+const Sbus_t *RemoteControl::GetSbusPoint(void)
 {
     return &sbus;
 }
 
 //判断遥控器数据是否出错，
-uint8_t RC_data_is_error(void)
+uint8_t RemoteControl::DataIsError(void)
 {
     //使用了go to语句 方便出错统一处理遥控器变量数据归零
     if (RC_abs(rc_ctrl.rc.ch[0]) > RC_CHANNAL_ERROR_VALUE)
@@ -191,11 +150,11 @@ error:
     return 1;
 }
 
-void slove_RC_lost(void)
+void RemoteControl::SolveRcLost(void)
 {
     RC_restart(SBUS_RX_BUF_NUM);
 }
-void slove_data_error(void)
+void RemoteControl::SolveDataError(void)
 {
     RC_restart(SBUS_RX_BUF_NUM);
 }
@@ -209,8 +168,15 @@ void slove_data_error(void)
     receive_count++;
 // clang-format off
 
+/* 中断向量表在 startup_stm32h723xx.s 里按 UART5_IRQHandler 这个名字找入口，
+   必须保持 C 链接，否则会落到向量表末尾那个 .weak Default_Handler。 */
+extern "C" void UART5_IRQHandler(void)
+{
+    remote_control.OnUart5Irq();
+}
+
 //串口中断
-void UART5_IRQHandler(void)
+void RemoteControl::OnUart5Irq(void)
 {
     if(huart5.Instance->ISR & UART_FLAG_RXNE)//接收到数据
     {
@@ -341,7 +307,7 @@ void UART5_IRQHandler(void)
 }
 
 //取正函数
-static int16_t RC_abs(int16_t value)
+int16_t RemoteControl::RC_abs(int16_t value)
 {
     if (value > 0)
     {
@@ -364,7 +330,7 @@ static int16_t RC_abs(int16_t value)
   * @param[out]     rc_ctrl: 遥控器数据指
   * @retval         none
   */
-static void sbus_to_rc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl)
+void RemoteControl::sbus_to_rc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl)
 {
     if (sbus_buf == NULL || rc_ctrl == NULL)
     {
@@ -438,7 +404,7 @@ static void sbus_to_rc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl)
   * @param[out]     rc_ctrl: 遥控器数据指针
   * @retval         none
   */
-static void At9sProSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl)
+void RemoteControl::At9sProSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl)
 {
     if (sbus_buf == NULL || rc_ctrl == NULL)
     {
@@ -471,7 +437,7 @@ static void At9sProSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl
   * @param[out]     rc_ctrl: 遥控器数据指针
   * @retval         none
   */
-static void Ht8aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl)
+void RemoteControl::Ht8aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl)
 {
     if (sbus_buf == NULL || rc_ctrl == NULL)
     {
@@ -504,7 +470,7 @@ static void Ht8aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl)
   * @param[out]     rc_ctrl: 遥控器数据指针
   * @retval         none
   */
-static void Et08aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl){
+void RemoteControl::Et08aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl){
     if (sbus_buf == NULL || rc_ctrl == NULL)
     {
         return;
@@ -592,7 +558,7 @@ static void Et08aSbusToRc(volatile const uint8_t *sbus_buf, RC_ctrl_t *rc_ctrl){
   * @brief          获取遥控器是否离线。
   * @retval         true:离线，false:在线
   */
-inline bool GetRcOffline(void)
+bool RemoteControl::IsOffline(void)
 {
 #if __RC_TYPE == RC_DT7
 #define USE_SBUS_LOST_COUNT 0
@@ -617,19 +583,19 @@ inline bool GetRcOffline(void)
   * @param[in]      ch 通道id，0-右平, 1-右竖, 2-左平, 3-左竖, 4-左滚轮，配合ch id宏进行使用
   * @retval         DT7遥控器通道值，范围为 [−1,1]
   */
-inline float GetDt7RcCh(uint8_t ch) { return rc_ctrl.rc.ch[ch] * RC_TO_ONE; }
+float RemoteControl::GetRcCh(uint8_t ch) { return rc_ctrl.rc.ch[ch] * RC_TO_ONE; }
 /**
   * @brief          获取DT7遥控器拨杆值，可配合switch_is_xxx系列宏函数使用。
   * @param[in]      sw 通道id，0-右, 1-左，配合sw id宏进行使用
   * @retval         DT7遥控器拨杆值，范围为{1,2,3}
   */
-inline char GetDt7RcSw(uint8_t sw) { return rc_ctrl.rc.s[sw]; }
+char RemoteControl::GetRcSw(uint8_t sw) { return rc_ctrl.rc.s[sw]; }
 /**
   * @brief          获取鼠标axis轴的移动速度
   * @param[in]      axis 轴id, 0-, 1-, 2-，配合轴id宏进行使用
   * @retval         鼠标axis轴移动速度，范围为[,]
   */
-inline float GetDt7MouseSpeed(uint8_t axis)
+float RemoteControl::GetMouseSpeed(uint8_t axis)
 {
     switch (axis) {
         case AX_X:
@@ -647,7 +613,7 @@ inline float GetDt7MouseSpeed(uint8_t axis)
   * @param[in]      key 按键id，配合按键id宏进行使用
   * @retval         鼠标按键是否被按下
   */
-inline bool GetDt7Mouse(uint8_t key)
+bool RemoteControl::GetMouse(uint8_t key)
 {
     switch (key) {
         case KEY_LEFT:
@@ -663,5 +629,5 @@ inline bool GetDt7Mouse(uint8_t key)
   * @param[in]      key 按键id，配合按键id宏进行使用
   * @retval         键盘按键是否被按下
   */
-inline bool GetDt7Keyboard(uint8_t key) { return rc_ctrl.key.v & ((uint16_t)1 << key); }
+bool RemoteControl::GetKeyboard(uint8_t key) { return rc_ctrl.key.v & ((uint16_t)1 << key); }
 /*------------------------------ End of File ------------------------------*/

@@ -110,6 +110,9 @@ uint8_t CDC_Transmit_HS(uint8_t* Buf, uint16_t Len);
 
 /* USER CODE BEGIN EXPORTED_FUNCTIONS */
 
+extern uint8_t USB_Transmit(uint8_t* Buf, uint16_t Len);
+extern int8_t USB_Receive(uint8_t* Buf, uint32_t *Len);
+
 /* USER CODE END EXPORTED_FUNCTIONS */
 
 /**
