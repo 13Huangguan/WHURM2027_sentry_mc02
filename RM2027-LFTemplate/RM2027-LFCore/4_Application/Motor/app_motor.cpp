@@ -11,6 +11,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 
+
 #include "app_motor.h"
 
 #include "bsp_can.h"
@@ -23,7 +24,7 @@
 
 #include <math.h>
 
-// #include "smc.h"
+// #include "alg_smc.hpp"
 /* Private macros ------------------------------------------------------------*/
 
 /* GM6020 收发 ID，按实际接线修改 */
@@ -64,7 +65,7 @@
 DJI_Motor_Info_Class g_pitchMotor;
 
 /* GM6020 发送帧 */
-static FDCAN_TxFrame_TypeDef txFrame1;
+static FdcanTxFrame txFrame1;
 
 static PID   pitchAnglePid;  /* 外环：角度 -> 目标转速(rpm) */
 static PID   pitchSpeedPid;  /* 内环：转速 -> 电压 */
@@ -75,7 +76,7 @@ static bool  pitchHoldReady = false;  /* 软启动标志：收到第一帧反馈
 /**
  * @brief 把角度折算到 -180~180 度，用于计算最短转向误差
  */
-static float WrapDegrees180(float angle)
+static float wrapDegrees180(float angle)
 {
     while (angle > 180.0f) {
         angle -= 360.0f;
@@ -89,16 +90,16 @@ static float WrapDegrees180(float angle)
 
 /* Exported functions --------------------------------------------------------*/
 
-void Motor_Init(void)
+void motorInit(void)
 {
     /* 配置滤波器、启动三路 FDCAN、打开接收中断 */
-    BSP_FDCAN_Init();
+    bspFdcanInit();
 
     /* 初始化 GM6020 发送帧，绑定 CAN1 */
-    BSP_FDCAN_InitTxFrame(&txFrame1, &hfdcan1);
+    bspFdcanInitTxFrame(&txFrame1, &hfdcan1);
 
     /* GM6020 */
-    g_pitchMotor.Motor_Init(DJI_GM6020, GM6020_TX_ID, GM6020_RX_ID);
+    g_pitchMotor.motorInit(DJI_GM6020, GM6020_TX_ID, GM6020_RX_ID);
 
     // SMC_init(
     // &speedSmc,
@@ -115,18 +116,18 @@ void Motor_Init(void)
     /* 内环：转速误差 -> 电压，输出限幅 8000（约 6.4V），积分限幅 4000 */
     pitchSpeedPid.init(50.0f, 5.0f, 0.0f, 0.0f, 4000.0f, 8000.0f, 0.001f,
                        0.0f, 0.0f, 0.0f, 0.0f, PidDFirstEnable);
-    Motor_SetPitchAngle(targetAngle);
+    motorSetPitchAngle(targetAngle);
 }
 
-void Motor_Control(void)
+void motorControl(void)
 {
 #if GM6020_USE_REMOTE_SPEED
     float rcValue = 0.0f;
     float speedTarget = 0.0f;
 
     /* 只有遥控器在线且电机反馈正常时才允许输出速度指令 */
-    if (!GetRcOffline() && g_pitchMotor.isInitialized()) {
-        rcValue = GetDt7RcCh(GM6020_RC_SPEED_CHANNEL);
+    if (!getRcOffline() && g_pitchMotor.isInitialized()) {
+        rcValue = getDt7RcCh(GM6020_RC_SPEED_CHANNEL);
         if (fabsf(rcValue) < GM6020_RC_SPEED_DEADZONE) {
             rcValue = 0.0f;
         }
@@ -158,13 +159,13 @@ void Motor_Control(void)
 #else
     /* 收到第一帧反馈后，把目标设成当前角度，避免上电猛冲 */
     if (!pitchHoldReady && g_pitchMotor.isInitialized()) {
-        targetAngle = g_pitchMotor.getData().Angle + PITCH_START_OFFSET_DEG;
+        targetAngle = g_pitchMotor.getData().angle + PITCH_START_OFFSET_DEG;
         pitchAnglePid.setTarget(targetAngle);
         pitchHoldReady = true;
     }
     /* 串级 PID：外环角度 -> 目标转速，内环转速 -> 电压 */
-    const float currentAngle = g_pitchMotor.getData().Angle;
-    const float angleError = WrapDegrees180(targetAngle - currentAngle);
+    const float currentAngle = g_pitchMotor.getData().angle;
+    const float angleError = wrapDegrees180(targetAngle - currentAngle);
     pitchAnglePid.setTarget(currentAngle + angleError);
     pitchAnglePid.setNow(currentAngle);
     pitchAnglePid.timCalculatePeriodElapsedCallback();
@@ -188,17 +189,17 @@ void Motor_Control(void)
   * @brief 设置云台 pitch 的目标角度
   * @param angle 目标角度，单位度
   */
-void Motor_SetPitchAngle(float angle)
+void motorSetPitchAngle(float angle)
 {
     targetAngle = angle;
     pitchAnglePid.setTarget(angle);
 }
 
-extern "C" void BSP_FDCAN_RxHandler(FDCAN_HandleTypeDef *hcan, uint32_t identifier, uint8_t *data)
+extern "C" void bspFdcanRxHandler(FDCAN_HandleTypeDef *hcan, uint32_t identifier, uint8_t *data)
 {
     if (hcan == &hfdcan1)
     {
-        g_pitchMotor.Motor_Update(identifier, data);
+        g_pitchMotor.motorUpdate(identifier, data);
         Chassis_MotorRxHandler(hcan, identifier, data);
     }
 }
@@ -212,7 +213,7 @@ extern "C" void CAN_Task(void const *argument)
 
     for (;;)
     {
-        Motor_Control();
+        motorControl();
         osDelay(1);
     }
 }

@@ -12,22 +12,15 @@
   */
 /* USER CODE END Header */
 
-
 #ifndef DRV_TICK_H
 #define DRV_TICK_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#include "core_linkage.h"
 
 #include "stdint.h"
 
+LF_EXTERN_C void delayUs(uint32_t us);
 
+LF_EXTERN_C void delayMs(uint32_t ms);
 
-extern void Delay_us(uint32_t us);
-
-extern void Delay_ms(uint32_t ms);
-	
-	
 #endif

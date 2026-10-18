@@ -14,6 +14,7 @@
 # target
 ######################################
 TARGET = LuojiaFox_H7_Template
+.DEFAULT_GOAL := all
 
 
 ######################################
@@ -172,4 +173,8 @@ C_INCLUDES =  \
 
 
 include Core.mk
+
+.PHONY: performance
+performance:
+	$(MAKE) BUILD_DIR=build/performance OPT=-O3 LFCORE_OPT=-O3 LFCORE_PROFILE=0 all
 # *** EOF ***

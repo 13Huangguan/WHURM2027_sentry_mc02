@@ -1,12 +1,12 @@
 #include "app_chassis.h"
 
-#include "alg_basic.h"
-#include "alg_force.h"
+#include "alg_basic.hpp"
+#include "alg_force.hpp"
 #include "alg_pid.h"
 #include "bsp_can.h"
 #include "cmsis_os.h"
 #include "fdcan.h"
-#include "Motor.hpp"
+#include "dvc_motor.hpp"
 #include "remote_control.h"
 
 namespace {
@@ -55,7 +55,7 @@ PID g_vxPid;
 PID g_vyPid;
 PID g_wzPid;
 
-FDCAN_TxFrame_TypeDef g_chassisTxFrame;
+FdcanTxFrame g_chassisTxFrame;
 uint32_t g_lastRxTick[kWheelCount] = {0U, 0U, 0U, 0U};
 
 float g_vxFiltered = 0.0f;
@@ -69,7 +69,7 @@ float ApplyDeadzone(float value) {
 
 float MotorRpmToWheelOmega(int16_t rpm, int8_t direction) {
     const float outputOmega =
-        (float)rpm * BasicMathRpmToRadps / kWheelGearRatio;
+        (float)rpm * BASIC_MATH_RPM_TO_RADPS / kWheelGearRatio;
     return outputOmega * (float)direction;
 }
 
@@ -147,14 +147,14 @@ void EstimateBodyVelocity(
 }  // namespace
 
 void Chassis_Init(void) {
-    BSP_FDCAN_InitTxFrame(&g_chassisTxFrame, &hfdcan1);
+    bspFdcanInitTxFrame(&g_chassisTxFrame, &hfdcan1);
 
-    ForceActuatorParam_t params[kWheelCount] = {};
+    ForceActuatorParam params[kWheelCount] = {};
 
     for (uint8_t i = 0U; i < kWheelCount; ++i) {
         const uint32_t motorId = kWheelMotorId[i];
 
-        g_wheelMotor[i].Motor_Init(
+        g_wheelMotor[i].motorInit(
             DJI_M3508,
             kChassisTxId,
             kChassisRxBaseId + motorId - 1U
@@ -162,17 +162,17 @@ void Chassis_Init(void) {
 
         g_lastRxTick[i] = 0U;
 
-        params[i].TorqueConstant = kWheelTorquePerAmp;
-        params[i].ReductionRatio = 1.0f;
-        params[i].Direction = kWheelDirection[i];
-        params[i].TorqueMax = kWheelTorqueMax;
+        params[i].torque_constant = kWheelTorquePerAmp;
+        params[i].reduction_ratio = 1.0f;
+        params[i].direction = kWheelDirection[i];
+        params[i].torque_max = kWheelTorqueMax;
 
         // 调试阶段先关闭模型补偿。
-        params[i].Inertia = 0.0f;
-        params[i].ViscousFriction = 0.0f;
-        params[i].CoulombFriction = 0.0f;
-        params[i].GravityAmplitude = 0.0f;
-        params[i].GravityOffset = 0.0f;
+        params[i].inertia = 0.0f;
+        params[i].viscous_friction = 0.0f;
+        params[i].coulomb_friction = 0.0f;
+        params[i].gravity_amplitude = 0.0f;
+        params[i].gravity_offset = 0.0f;
     }
 
     g_chassisForce.init(params, kWheelCount, 3U, 0.001f);
@@ -229,7 +229,7 @@ void Chassis_MotorRxHandler(
             kChassisRxBaseId + kWheelMotorId[i] - 1U;
 
         if (identifier == rxId) {
-            g_wheelMotor[i].Motor_Update(identifier, data);
+            g_wheelMotor[i].motorUpdate(identifier, data);
             g_lastRxTick[i] = HAL_GetTick();
             return;
         }
@@ -260,9 +260,9 @@ void Chassis_Control(void) {
     g_wzFiltered = kVelocityFilterAlpha * g_wzFiltered +
                    (1.0f - kVelocityFilterAlpha) * wzRaw;
 
-    const bool rcOnline = !GetRcOffline();
+    const bool rcOnline = !getRcOffline();
     const bool locked =
-        switch_is_down(GetDt7RcSw(RC_SW_RIGHT));
+        SWITCH_IS_DOWN(getDt7RcSw(RC_SW_RIGHT));
 
     if ((!rcOnline) || locked ||
         (!AllWheelsOnline()) || (!g_forceReady)) {
@@ -277,13 +277,13 @@ void Chassis_Control(void) {
     }
 
     const float forward = ApplyDeadzone(
-        GetDt7RcCh(RC_CH_LEFT_VERTICAL)
+        getDt7RcCh(RC_CH_LEFT_VERTICAL)
     );
     const float lateral = ApplyDeadzone(
-        GetDt7RcCh(RC_CH_LEFT_HORIZONTAL)
+        getDt7RcCh(RC_CH_LEFT_HORIZONTAL)
     );
     const float rotate = ApplyDeadzone(
-        GetDt7RcCh(RC_CH_RIGHT_HORIZONTAL)
+        getDt7RcCh(RC_CH_RIGHT_HORIZONTAL)
     );
 
     g_vxPid.setTarget(kRcXSign * forward * kMaxVx);

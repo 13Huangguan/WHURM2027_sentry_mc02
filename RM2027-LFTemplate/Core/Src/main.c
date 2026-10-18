@@ -134,8 +134,8 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   bspInit();
-  remote_control_init();
-  Motor_Init();
+  remoteControlInit();
+  motorInit();
   Chassis_Init();
   /* USER CODE END 2 */
 
