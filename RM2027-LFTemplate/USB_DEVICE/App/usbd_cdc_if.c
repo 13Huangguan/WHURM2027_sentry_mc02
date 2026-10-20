@@ -316,6 +316,36 @@ static int8_t CDC_TransmitCplt_HS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
 
+#define MAX_RESEND_CNT 8192
+
+/**
+  * @brief  本函数为了方便使用USB设备发送数据，其实就是调用CDC_Transmit_HS/-/
+  * @param  Buf: Buffer of data to be sent
+  * @param  Len: Number of data to be sent (in bytes)
+  * @retval USBD_OK if all operations are OK else USBD_FAIL or USBD_BUSY
+  */
+uint8_t USB_Transmit(uint8_t* Buf, uint16_t Len)
+{
+  uint16_t resend_cnt = 0;
+  uint8_t usb_send_state = USBD_FAIL;
+  while (usb_send_state != USBD_OK && resend_cnt < MAX_RESEND_CNT) {
+    usb_send_state = CDC_Transmit_HS(Buf, Len);
+    resend_cnt++;
+  }
+  return usb_send_state;
+}
+
+/**
+  * @brief  本函数为了方便使用USB设备接收数据，其实就是调用CDC_Receive_HS/-/
+  * @param  Buf: Buffer of data to be received
+  * @param  Len: Number of data received (in bytes)
+  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
+  */
+int8_t USB_Receive(uint8_t* Buf, uint32_t *Len)
+{
+  return CDC_Receive_HS(Buf,Len);
+}
+
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 
 /**
