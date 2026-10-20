@@ -85,4 +85,7 @@ extern void bmi088Init(void);
 
 extern void bmi088InfoUpdate(Bmi088Info* bmi088_info);
 
+bool bmi088AccelDataError(void);
+bool bmi088GyroDataError(void);
+
 #endif

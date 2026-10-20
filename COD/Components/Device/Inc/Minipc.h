@@ -24,7 +24,7 @@
 
 
 typedef struct{
-  //µ¼º½½ÓÊÕ
+  //å¯¼èˆªæ¥æ”¶
 uint8_t Header;
   float Vx;
   float Vy;
@@ -36,13 +36,13 @@ uint8_t Header;
 	 uint8_t Spin_test[4];
 	 uint8_t heat_outpost_int[4];
 	 uint8_t Spin_Switch;
-  //¾ö²ß½ÓÊÜ
-  uint8_t Fire;  //0²»¿ª»ğ£¬1¿ª»ğ
-  uint8_t Mode;  //0£¬×Ô¼ì 1×Ô¶¯
+  //å†³ç­–æ¥å—
+  uint8_t Fire;  //0ä¸å¼€ç«ï¼Œ1å¼€ç«
+  uint8_t Mode;  //0ï¼Œè‡ªæ£€ 1è‡ªåŠ¨
 }MiniPc_Receive_Auto_Typedef;
 
 
-//×ÔÃé½ÓÊÕ
+//è‡ªç„æ¥æ”¶
 typedef struct{
 	uint8_t header;
 	uint8_t fire_accept;
@@ -63,7 +63,7 @@ typedef struct{
 }MiniPc_Receive_Vision_Typedef;
 
 
-//×ÔÃé·¢ËÍ
+//è‡ªç„å‘é€
 typedef struct{
 uint8_t Header;
 
@@ -77,12 +77,12 @@ uint8_t *Yaw;
 
 typedef struct{
 struct{
-	 uint16_t Stage_Remain_Time;	 //ÓÎÏ·Ê£ÓàÊ±¼ä
-   uint8_t Game_Progress;   //ÓÎÏ·½ø¶È
+	 uint16_t Stage_Remain_Time;	 //æ¸¸æˆå‰©ä½™æ—¶é—´
+   uint8_t Game_Progress;   //æ¸¸æˆè¿›åº¦
 }Game_Status;
 
 struct{
-	 uint16_t Current_HP;	 //Ê£ÓàÑªÁ¿
+	 uint16_t Current_HP;	 //å‰©ä½™è¡€é‡
 	 uint16_t Robot_1_HP;
 	 uint16_t Robot_3_HP;
 	 uint16_t Robot_7_HP;
@@ -95,8 +95,8 @@ uint8_t Mode_Defense;
 }Even_Data;
 
 struct{
-	uint8_t Zone_Status;  //²¹¸øÇø×´Ì¬
-	uint8_t Area_Status;  //µÃ·Öµã×´Ì¬
+	uint8_t Zone_Status;  //è¡¥ç»™åŒºçŠ¶æ€
+	uint8_t Area_Status;  //å¾—åˆ†ç‚¹çŠ¶æ€
 }Rfid;
 
 
