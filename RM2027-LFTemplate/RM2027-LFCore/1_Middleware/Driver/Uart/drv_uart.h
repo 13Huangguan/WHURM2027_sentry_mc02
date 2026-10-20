@@ -21,4 +21,6 @@ LF_EXTERN_C void rcInit(uint8_t* rx1_buf, uint8_t* rx2_buf, uint16_t dma_buf_num
 LF_EXTERN_C void rcUnable(void);
 LF_EXTERN_C void rcRestart(uint16_t dma_buf_num);
 
+LF_EXTERN_C void usart1_init(uint8_t* rx1_buf, uint8_t* rx2_buf, uint16_t dma_buf_num);
+
 #endif // BSP_UART_H
