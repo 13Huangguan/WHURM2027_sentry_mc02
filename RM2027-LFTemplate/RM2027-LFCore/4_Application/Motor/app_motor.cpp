@@ -19,6 +19,7 @@
 #include "fdcan.h"
 
 #include "alg_pid.h"
+#include "app_chassis.h"
 #include "remote_control.h"
 
 #include <math.h>
@@ -201,6 +202,7 @@ extern "C" void bspFdcanRxHandler(FDCAN_HandleTypeDef *hcan, uint32_t identifier
     if (hcan == &hfdcan1)
     {
         g_pitchMotor.motorUpdate(identifier, data);
+        Chassis_MotorRxHandler(hcan, identifier, data);
     }
 }
 
