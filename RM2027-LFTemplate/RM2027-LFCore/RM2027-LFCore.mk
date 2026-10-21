@@ -17,6 +17,10 @@ $(wildcard $(CORE_DIR)/4_Application/*/*.cpp) \
 $(wildcard $(CORE_DIR)/3_LuojiaFox/*.cpp) \
 $(wildcard $(CORE_DIR)/core_template.cpp)
 
+C_SOURCES += \
+$(wildcard $(CORE_DIR)/1_Middleware/*/*.c) \
+$(wildcard $(CORE_DIR)/1_Middleware/*/*/*.c)
+
 LFCORE_OBJECTS := $(addprefix $(BUILD_DIR)/,$(filter $(CORE_DIR)/%,$(CPP_SOURCES:.cpp=.o)))
 $(LFCORE_OBJECTS): $(CORE_DIR)/RM2027-LFCore.mk Core.mk
 

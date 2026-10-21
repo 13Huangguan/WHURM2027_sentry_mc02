@@ -30,6 +30,14 @@ void SystemStateStore::updateImu(const ImuState &state)
     taskEXIT_CRITICAL();
 }
 
+void SystemStateStore::updateChassis(const ChassisState &state)
+{
+    taskENTER_CRITICAL();
+    g_system_state.chassis = state;
+    taskEXIT_CRITICAL();
+}
+
+
 void SystemStateStore::updateGimbal(const GimbalState &state)
 {
     taskENTER_CRITICAL();
@@ -48,6 +56,27 @@ void SystemStateStore::updateReferee(const RefereeState &state)
 {
     taskENTER_CRITICAL();
     g_system_state.referee = state;
+    taskEXIT_CRITICAL();
+}
+
+void SystemStateStore::updateRobotCmd(const RobotCmdState &state)
+{
+    taskENTER_CRITICAL();
+    g_system_state.robot_cmd = state;
+    taskEXIT_CRITICAL();
+}
+
+void SystemStateStore::updateUsbLink(const UsbLinkState &state)
+{
+    taskENTER_CRITICAL();
+    g_system_state.usb_link = state;
+    taskEXIT_CRITICAL();
+}
+
+void SystemStateStore::updateVirtualRc(const VirtualRcState &state)
+{
+    taskENTER_CRITICAL();
+    g_system_state.virtual_rc = state;
     taskEXIT_CRITICAL();
 }
 
