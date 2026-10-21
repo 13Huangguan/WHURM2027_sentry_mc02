@@ -15,6 +15,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "app_ins.h"
 
+#include "detect.h"
+
 #include "alg_basic.hpp"
 #include "alg_lpf.hpp"
 #include "alg_pid.h"
@@ -202,6 +204,8 @@ extern "C" void INS_Task(void const* argument) {
 
         /* Update the BMI088 measurement */
         bmi088InfoUpdate(&bmi088_info);
+        detect_hook(DETECT_BMI_GYRO);
+        detect_hook(DETECT_BMI_ACCEL);
 
         /* Accel measurement LPF2p */
         ins_info.accel[0] = lowPassFilter2pUpdate(&ins_accel_pf2p[0], bmi088_info.accel[0]);
