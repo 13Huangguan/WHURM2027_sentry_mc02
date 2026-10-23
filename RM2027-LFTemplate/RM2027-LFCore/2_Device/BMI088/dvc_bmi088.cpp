@@ -3,6 +3,7 @@
 #include "cmsis_os.h"
 #include "drv_gpio.h"
 #include "drv_spi.h"
+#include <cmath>
 
 enum class Bmi088Sensor { ACCEL, GYRO };
 
@@ -320,4 +321,18 @@ void bmi088InfoUpdate(Bmi088Info* info) {
     info->gyro[0] = BMI088_GYRO_SEN * info->mpu_info.gyro_x - info->offsets_gyro_x;
     info->gyro[1] = BMI088_GYRO_SEN * info->mpu_info.gyro_y - info->offsets_gyro_y;
     info->gyro[2] = BMI088_GYRO_SEN * info->mpu_info.gyro_z - info->offsets_gyro_z;
+}
+
+bool bmi088AccelDataError(void)
+{
+    return !std::isfinite(bmi088_info.accel[0]) ||
+           !std::isfinite(bmi088_info.accel[1]) ||
+           !std::isfinite(bmi088_info.accel[2]);
+}
+
+bool bmi088GyroDataError(void)
+{
+    return !std::isfinite(bmi088_info.gyro[0]) ||
+           !std::isfinite(bmi088_info.gyro[1]) ||
+           !std::isfinite(bmi088_info.gyro[2]);
 }
