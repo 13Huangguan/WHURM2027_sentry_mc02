@@ -56,6 +56,8 @@ void Referee::Init(void)
 
     online_time = 0;
     receive_count = 0;
+    power_tick_ = buffer_tick_ = 0;
+    power_received_ = buffer_received_ = false;
     last_hp_ = 0;
     attacked_time_ = 0;
 }
@@ -102,8 +104,19 @@ void Referee::DataSolve(uint8_t *frame)
         } break;
 
         case ROBOT_STATE_CMD_ID: {
+            if (receive_header.data_length != sizeof(robot_status_t)) {
+                --receive_count;
+                break;
+            }
+            const uint32_t mask = __get_PRIMASK();
+            __disable_irq();
+            __DMB();
             memcpy(&robot_status, frame + index, sizeof(robot_status_t));
             online_time = HAL_GetTick();
+            power_tick_ = online_time;
+            power_received_ = true;
+            __DMB();
+            __set_PRIMASK(mask);
 
             uint16_t hp = robot_status.current_HP;
             /* 开局第一次收到时 last_hp_ 还是 0，不能把"从 0 涨到满血"当成掉血 */
@@ -113,8 +126,19 @@ void Referee::DataSolve(uint8_t *frame)
             last_hp_ = hp;
         } break;
         case POWER_HEAT_DATA_CMD_ID: {
+            if (receive_header.data_length != sizeof(power_heat_data_t)) {
+                --receive_count;
+                break;
+            }
+            const uint32_t mask = __get_PRIMASK();
+            __disable_irq();
+            __DMB();
             memcpy(&power_heat_data, frame + index, sizeof(power_heat_data_t));
             online_time = HAL_GetTick();
+            buffer_tick_ = online_time;
+            buffer_received_ = true;
+            __DMB();
+            __set_PRIMASK(mask);
         } break;
         case ROBOT_POS_CMD_ID: {
             memcpy(&game_robot_pos_t, frame + index, sizeof(robot_pos_t));
@@ -251,6 +275,21 @@ void Referee::UnpackFifoData(void)
 }
 
 float Referee::GetBuffer(void) { return power_heat_data.buffer_energy; }
+
+RefereePowerSnapshot Referee::GetPowerSupplySnapshot()
+{
+    // 裁判解析在任务上下文运行；短临界区阻止任务切换，避免两帧数据混读。
+    const uint32_t mask = __get_PRIMASK();
+    __disable_irq();
+    __DMB();
+    const RefereePowerSnapshot result = {
+        robot_status.chassis_power_limit, power_heat_data.buffer_energy,
+        power_tick_, buffer_tick_, power_received_, buffer_received_, !IsOffline()
+    };
+    __DMB();
+    __set_PRIMASK(mask);
+    return result;
+}
 
 void Referee::GetChassisPowerLimit(uint16_t *power_limit) { *power_limit = robot_status.chassis_power_limit; }
 

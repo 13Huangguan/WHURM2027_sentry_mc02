@@ -22,6 +22,16 @@
 #include "fifo.h"
 #include "stdbool.h"
 
+struct RefereePowerSnapshot {
+    uint16_t power_limit_w;
+    uint16_t buffer_energy_j;
+    uint32_t power_tick;
+    uint32_t buffer_tick;
+    bool power_received;
+    bool buffer_received;
+    bool online;
+};
+
 #define USART_RX_BUF_LENGHT 512
 #define REFEREE_FIFO_BUF_LENGTH 1024
 
@@ -343,6 +353,7 @@ public:
        因为 reason 0 是合法值（被弹丸击打），无法区分"没挨打"和"被弹丸打"。 */
     bool IsAttacked(void);
     float GetBuffer(void);
+    RefereePowerSnapshot GetPowerSupplySnapshot();
     void GetChassisPowerLimit(uint16_t *power_limit);
     void GetShootHeat17LimitAndHeat17(uint16_t *cooling_value, uint16_t *heat_limit, uint16_t *heat);
     void GetSentryInfo(uint32_t *sentry_info, uint16_t *sentry_info_2, uint64_t *sentry_info_3);
@@ -361,6 +372,10 @@ private:
 
     uint32_t online_time;
     uint32_t receive_count;
+    uint32_t power_tick_ = 0;
+    uint32_t buffer_tick_ = 0;
+    bool power_received_ = false;
+    bool buffer_received_ = false;
 
     uint16_t last_hp_ = 0;
     uint32_t attacked_time_ = 0;

@@ -30,8 +30,10 @@
 #include "gpio.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "bsp_can.h"
 #include "dvc_bsp.h"
-#include "app_motor.h"
+#include "app_smc_tune.h"
+#include "app_lk_test.h"
 #include "remote_control.h"
 /* USER CODE END Includes */
 
@@ -133,8 +135,17 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   bspInit();
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
   remoteControlInit();
-  motorInit();
+
+  /* 启动三路 FDCAN；底盘/云台/发射模块随后自行注册电机 */
+  bspFdcanInit();
+
+  /* 电机测试仅显式启用，模板默认不创建测试任务 */
+  // lkTestInit();
+
+  /* 2006 SMC 在线调参模块：仅显式测试时启用 */
+  // smcTuneInit();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */

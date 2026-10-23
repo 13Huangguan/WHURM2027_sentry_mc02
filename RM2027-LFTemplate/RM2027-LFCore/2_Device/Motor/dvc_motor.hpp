@@ -1,201 +1,253 @@
 /**
- * @file Motor.hpp
- * @author 
- * @brief 电机设备驱动（C++ 版本）
- * @version 1.0
- * @date 2026/10/04
+ * @file dvc_motor.hpp
+ * @author LuojiaFox
+ * @brief 电机公共基类与 CAN 接收分发
+ * @version 3.0
+ * @date 2026-10-20
  *
- * @attention 由 COD/Components/Device/Inc/Motor.h 转换而来，
- *            CAN 层沿用 bsp_can.h 的 FDCAN_TxFrame_TypeDef 接口。
+ * @attention 本文件只放公共部分；具体厂商驱动见：
+ *            - dvc_dji_motor.hpp
+ *            - dvc_dm_motor.hpp
+ *            - dvc_lk_motor.hpp
+ *            新增电机时继承 MotorBase，实现 update()/reset()，
+ *            再调用 MotorBase::registerMotor() 注册。
+ *
+ * @copyright WHU-LuojiaFox (c) 2026
  */
 
-#ifndef DEVICE_MOTOR_HPP
-#define DEVICE_MOTOR_HPP
+#pragma once
 
 /* Includes ------------------------------------------------------------------*/
 
-#include "stm32h7xx.h"
 #include "bsp_can.h"
+
+#include <stdint.h>
+#include <math.h>
+
+/** @brief 保存并恢复中断屏蔽状态；仅用于短数据复制，禁止在作用域内发送 CAN。 */
+class MotorCriticalSection {
+public:
+    MotorCriticalSection() : mask_(__get_PRIMASK()) { __disable_irq(); __DMB(); }
+    ~MotorCriticalSection() { __DMB(); __set_PRIMASK(mask_); }
+    MotorCriticalSection(const MotorCriticalSection&) = delete;
+    MotorCriticalSection& operator=(const MotorCriticalSection&) = delete;
+private:
+    uint32_t mask_;
+};
+
+template <typename Data>
+struct MotorSnapshot {
+    Data data;
+    uint32_t last_rx_tick;
+    uint32_t rx_count;
+    bool online;
+    bool fault_known;
+    bool fault;
+};
+
+/* Exported macros -----------------------------------------------------------*/
+
+/** @brief 默认电机离线判定时间，单位 ms */
+constexpr uint32_t kDefaultMotorOfflineTimeoutMs = 100U;
 
 /* Exported types ------------------------------------------------------------*/
 
-/** 
-* @brief 电机 CAN 收发标识符
-*/
-struct Motor_CANFrameInfo_typedef {
-    uint32_t TxIdentifier;  /*!< 发送标识符 */
-    uint32_t RxIdentifier;  /*!< 接收标识符 */
+/**
+ * @brief 电机类型
+ * @note 新增厂商电机时在此追加。
+ */
+enum class MotorType : uint8_t {
+    Unknown = 0, /*!< 未知类型 */
+    DjiGm6020,   /*!< DJI GM6020，电压控制 */
+    DjiM3508,    /*!< DJI M3508，电流控制 */
+    DjiM2006,    /*!< DJI M2006，电流控制 */
+    Dm,          /*!< 达妙电机 */
+    Lk,          /*!< 瓴控电机（MF/MG 系列） */
 };
-
-
-/** 
-* @brief DJI 电机类型 
-*/
-enum DJI_Motor_Type_e {
-    DJI_GM6020 = 0,  /*!< GM6020 */
-    DJI_M3508,       /*!< M3508 */
-    DJI_M2006,       /*!< M2006 */
-    DJI_MOTOR_TYPE_NUM,     /*!< 类型总数 */
-};
-
-
-/** 
-* @brief DJI 电机数据
-*/
-struct DJI_Motor_Data_Typedef{
-    bool Initlized;     /*!< 初始化标志 */
-    int16_t Current;      /*!< 电流 */
-    int16_t Velocity;     /*!< 转速, rpm */
-    int16_t Encoder;      /*!< 编码器原始值 */
-    int16_t Last_Encoder;  /*!< 上次编码器值 */
-    float angle;          /*!< 角度, deg */
-    uint8_t Temperature;  /*!< 温度 */
-};
-
 
 /**
-* @brief DJI 电机（GM6020 / M3508 / M2006）
-*/
-class DJI_Motor_Info_Class {
+ * @brief 电机公共接口
+ * @note 只管“反馈解析”和“在线状态”，控制量由各子类自行定义。
+ *       update() 会在 CAN 接收中断中调用，函数内不要做阻塞操作。
+ */
+class MotorBase {
 public:
-    DJI_Motor_Info_Class();
+    static constexpr uint8_t kMaxMotors = 24U;
 
-    /** @brief 配置电机类型与 CAN 收发标识符 */
-    void motorInit(DJI_Motor_Type_e type, uint32_t txIdentifier, uint32_t rxIdentifier);
-
-    /** @brief 用一帧 CAN 数据刷新电机状态 */
-    void motorUpdate(uint32_t identifier, const uint8_t *rxBuffer);
+    MotorBase(MotorType type, FDCAN_HandleTypeDef* bus, uint8_t id, uint32_t rx_identifier);
+    MotorBase(const MotorBase&) = delete;
+    MotorBase& operator=(const MotorBase&) = delete;
 
     /**
-     * @brief 把 4 台 DJI 电机的电流打包成一帧发送
-     *
-     * @param txFrame    已用 BSP_FDCAN_InitTxFrame 初始化过的发送帧
-     * @param identifier 0x200（M3508/M2006 的 ID 1~4）、0x1FF（同型号 ID 5~8
-     *                   或 GM6020 的 ID 1~4）、0x2FF（GM6020 的 ID 5~7）
-     * @param current    4 台电机的电流，范围 -16384 ~ 16384
+     * @brief 用一帧 CAN 数据刷新电机状态
+     * @param identifier 标准帧标识符
+     * @param data       8 字节数据
+     * @return true 表示该帧属于本电机且已解析
      */
-    static void sendCurrent(FdcanTxFrame *txFrame, uint32_t identifier, const int16_t current[4]);
+    virtual bool update(uint32_t identifier, const uint8_t* data, uint8_t length = 8U) = 0;
 
-    bool isInitialized() const;
-    DJI_Motor_Type_e getType() const;
-    const  Motor_CANFrameInfo_typedef &getCanFrame() const;
-    const  DJI_Motor_Data_Typedef &getData() const;
+    /** @brief 清空反馈数据与离线计时 */
+    virtual void reset() = 0;
+
+    MotorType type() const
+    {
+        return type_;
+    }
+
+    uint8_t id() const
+    {
+        return id_;
+    }
+
+    FDCAN_HandleTypeDef* bus() const
+    {
+        return bus_;
+    }
+
+    uint32_t rxIdentifier() const
+    {
+        return rx_identifier_;
+    }
+
+    /** @brief 参与统一发送时的帧标识符；返回 0 表示不参与 */
+    virtual uint32_t txIdentifier() const
+    {
+        return 0U;
+    }
+
+    /** @brief 在发送帧中的槽位，0~3 */
+    virtual uint8_t txSlot() const
+    {
+        return 0U;
+    }
+
+    virtual bool sharesTxFrame() const { return false; }
+
+    int8_t direction() const
+    {
+        return direction_;
+    }
+
+    /**
+     * @brief 设置安装方向
+     * @param direction 正数表示与机构定义方向一致，负数表示相反
+     */
+    bool setDirection(int8_t direction)
+    {
+        if (isRegistered()) { return false; }
+        direction_ = (direction < 0) ? -1 : 1;
+        return true;
+    }
+
+    float reductionRatio() const
+    {
+        return reduction_ratio_;
+    }
+
+    /**
+     * @brief 设置输出轴减速比
+     * @param ratio 例如 M3508 为 19，GM6020 为 1；仅初始化阶段设置；无效值返回 false 并保留原配置
+     */
+    bool setReductionRatio(float ratio)
+    {
+        if (isRegistered() || !isfinite(ratio) || ratio < 1.0e-6f || ratio > 1.0e6f) {
+            return false;
+        }
+        reduction_ratio_ = ratio;
+        return true;
+    }
+
+    void setOfflineTimeout(uint32_t timeout_ms)
+    {
+        MotorCriticalSection lock;
+        offline_timeout_ms_ = timeout_ms;
+    }
+
+    uint32_t lastRxTick() const
+    {
+        MotorCriticalSection lock;
+        return last_rx_tick_;
+    }
+
+    /** @brief 已收到的反馈帧数，可用于判断数据是否刷新 */
+    uint32_t rxCount() const
+    {
+        MotorCriticalSection lock;
+        return rx_count_;
+    }
+
+    /** @brief 按给定时刻判断电机是否在线 */
+    bool isOnline(uint32_t now_ms) const;
+
+    /** @brief 按当前 HAL 节拍判断电机是否在线 */
+    bool isOnline() const;
+
+    /* ---- 电机注册与 CAN 接收分发，无需额外的 manager 类 ---- */
+
+    /** @brief 注册电机，重复注册或标识符冲突时返回 false */
+    static bool registerMotor(MotorBase& motor);
+
+    /**
+     * @brief 在 CAN 接收回调中分发一帧数据
+     * @note  按 (CAN 口, 接收标识符) 找到电机并调用其 update()
+     */
+    static void onCanFrame(FDCAN_HandleTypeDef* bus, uint32_t identifier,
+                           const uint8_t* data, uint8_t length);
+
+    /** @brief 注册后禁止再次 init；电机对象必须具有静态生命周期。 */
+    bool isRegistered() const;
+
+    /** @brief 按注册顺序访问电机，越界返回 nullptr */
+    static MotorBase* motorAt(uint8_t index);
+
+    static uint8_t motorCount();
+
+    /** @brief 所有已注册电机是否都在线，未注册任何电机时返回 true */
+    static bool allOnline(uint32_t now_ms);
+
+protected:
+    ~MotorBase() = default;
+
+    /** @brief 未携带故障位的反馈不能用在线状态推断无故障。 */
+    virtual bool faultKnown() const { return false; }
+    virtual bool reportedFault() const { return false; }
+
+    void configure(MotorType type, FDCAN_HandleTypeDef* bus, uint8_t id, uint32_t rx_identifier);
+
+    /** @brief 更新最近一次反馈时刻 */
+    void refreshRxTick();
+
+    /** @brief 清空离线计时，使电机回到“从未收到反馈”状态 */
+    void clearRxTick()
+    {
+        last_rx_tick_ = 0U;
+        rx_count_ = 0U;
+        received_ = false;
+    }
+
+    template <typename Data>
+    MotorSnapshot<Data> snapshotOf(const Data& data) const
+    {
+        MotorCriticalSection lock;
+        return {data, last_rx_tick_, rx_count_, isOnline(HAL_GetTick()),
+                faultKnown(), reportedFault()};
+    }
 
 private:
-    /** @brief 编码器值换算为累计角度, deg */
-    float djiMotorEncoderToAnglesum(float torqueRatio, uint16_t maxEncoder);
+    MotorType type_;
+    FDCAN_HandleTypeDef* bus_;
+    uint8_t id_;
+    uint32_t rx_identifier_;
+    int8_t direction_;
+    float reduction_ratio_;
+    uint32_t last_rx_tick_;
+    uint32_t rx_count_;
+    uint32_t offline_timeout_ms_;
+    bool received_ = false;
 
-    /** @brief 编码器值换算为 -180~180 角度, deg */
-    float djiMotorEncoderToAngle(float torqueRatio, uint16_t maxEncoder);
-
-    /** @brief 把角度循环限制到 [minValue, maxValue] */
-    static float fLoopConstrain(float input, float minValue, float maxValue);
-
-    DJI_Motor_Type_e type;
-    Motor_CANFrameInfo_typedef canFrame;
-    DJI_Motor_Data_Typedef data;
+    /* 静态注册表 */
+    static MotorBase* motors_[kMaxMotors];
+    static volatile uint8_t motor_count_;
 };
 
-
-
-
-
-
-
-/** 
-* @brief 达妙电机控制模式 
-*/
-enum DM_Motor_Control_Mode_Type_e {
-    MIT = 0,           /*!< MIT 模式 */
-    POSITION_VELOCITY,  /*!< 位置-速度模式 */
-    VELOCITY,          /*!< 速度模式 */
-};
-
-/** @brief 达妙电机指令 */
-enum DM_Motor_CMD_Type_e {
-    Motor_Enable = 0,        /*!< 使能 */
-    Motor_Disable,           /*!< 失能 */
-    Motor_Save_Zero_Position,  /*!< 保存零点 */
-    DM_Motor_CMD_Type_Num,               /*!< 指令总数 */
-};
-
-/** @brief 达妙电机参数范围 */
-struct DM_Motor_Param_Range_Typedef{
-    float P_MAX;  /*!< 位置范围, rad */
-    float V_MAX;  /*!< 速度范围 */
-    float T_MAX;  /*!< 扭矩范围 */
-};
-
-/** @brief 达妙电机数据 */
-struct DM_Motor_Data_Typedef{
-    bool Initlized;          /*!< 初始化标志 */
-    uint8_t State;           /*!< 状态字 */
-    uint16_t P_int;          /*!< 位置原始值 */
-    uint16_t V_int;          /*!< 速度原始值 */
-    uint16_t T_int;          /*!< 扭矩原始值 */
-    float Position;          /*!< 位置, rad */
-    float Velocity;          /*!< 速度 */
-    float Torque;            /*!< 扭矩 */
-    float Temperature_MOS;    /*!< MOS 温度 */
-    float Temperature_Rotor;  /*!< 线圈温度 */
-    float angle;             /*!< 角度, deg */
-};
-
-/** @brief 达妙电机控制量 */
-struct DM_Motor_Contorl_Info_Typedef {
-    float Position;  /*!< 目标位置, rad */
-    float Velocity;  /*!< 目标速度 */
-    float KP;        /*!< 位置增益 */
-    float KD;        /*!< 速度增益 */
-    float Torque;    /*!< 前馈扭矩 */
-    float angle;     /*!< 目标角度, deg */
-};
-
-/**
- * @brief 达妙电机（DM 系列）
- */
-class DM_Motor_Info_Class {
-public:
-     DM_Motor_Info_Class();
-
-    /** @brief 配置控制模式、参数范围与 CAN 收发标识符 */
-    void init(DM_Motor_Control_Mode_Type_e controlMode,
-              const DM_Motor_Param_Range_Typedef &paramRange,
-              uint32_t txIdentifier,
-              uint32_t rxIdentifier);
-
-    /** @brief 用一帧 CAN 数据刷新电机状态 */
-    void dmMotorInfoUpdate(uint32_t identifier, const uint8_t *rxBuffer);
-
-    /** @brief 发送使能/失能/保存零点指令 */
-    void dmMotorCommand(FdcanTxFrame *txFrame, DM_Motor_CMD_Type_e command);
-
-    /** @brief MIT 模式发送控制量 */
-    void dmMotorMitSend(FdcanTxFrame *txFrame, const DM_Motor_Contorl_Info_Typedef &control);
-
-    /** @brief 位置-速度模式发送控制量 */
-    void dmMotorPositionVelocitySend(FdcanTxFrame *txFrame, float position, float velocity);
-
-    /** @brief 速度模式发送控制量 */
-    void dmMotorVelocitySend(FdcanTxFrame *txFrame, float velocity);
-
-    bool isInitialized() const;
-    DM_Motor_Control_Mode_Type_e getControlMode() const;
-    const Motor_CANFrameInfo_typedef &getCanFrame() const;
-    const DM_Motor_Param_Range_Typedef &getParamRange() const;
-    const DM_Motor_Data_Typedef &getData() const;
-
-private:
-    /** @brief 原始整数还原为浮点量 */
-    static float uintToFloat(int xInt, float xMin, float xMax, int bits);
-
-    /** @brief 浮点量映射为原始整数 */
-    static int floatToUint(float x, float xMin, float xMax, int bits);
-
-    DM_Motor_Control_Mode_Type_e controlMode;
-    Motor_CANFrameInfo_typedef canFrame;
-    DM_Motor_Param_Range_Typedef paramRange;
-    DM_Motor_Data_Typedef data;
-};
-
-#endif  // DEVICE_MOTOR_HPP
+/************************ COPYRIGHT(C) WHU-LuojiaFox **************************/
