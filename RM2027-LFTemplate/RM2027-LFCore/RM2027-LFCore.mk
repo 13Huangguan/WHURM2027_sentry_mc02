@@ -15,6 +15,7 @@ $(wildcard $(CORE_DIR)/1_Middleware/*/*/*.cpp) \
 $(wildcard $(CORE_DIR)/2_Device/*/*.cpp) \
 $(wildcard $(CORE_DIR)/4_Application/*/*.cpp) \
 $(wildcard $(CORE_DIR)/3_LuojiaFox/*.cpp) \
+$(wildcard $(CORE_DIR)/3_LuojiaFox/*/*.cpp) \
 $(wildcard $(CORE_DIR)/core_template.cpp)
 
 C_SOURCES += \
@@ -36,7 +37,8 @@ APP_SUBDIRS := \
 $(wildcard $(CORE_DIR)/4_Application/*)
 
 LUOJIAFOX_SUBDIRS := \
-$(wildcard $(CORE_DIR)/3_LuojiaFox)
+$(wildcard $(CORE_DIR)/3_LuojiaFox) \
+$(patsubst %/,%,$(wildcard $(CORE_DIR)/3_LuojiaFox/*/))
 
 C_INCLUDES += \
 -I$(CORE_DIR) \

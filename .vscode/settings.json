@@ -2,6 +2,7 @@
   "C_Cpp.default.compilerPath": "C:/msys64/ucrt64/bin/arm-none-eabi-gcc.exe",
   "C_Cpp.default.cStandard": "gnu11",
   "C_Cpp.default.cppStandard": "gnu++14",
+  "C_Cpp.default.intelliSenseMode": "windows-gcc-arm",
   "C_Cpp.intelliSenseEngine": "default",
   "C_Cpp.intelliSenseEngineFallback": "enabled",
   "clangd.enable": false,

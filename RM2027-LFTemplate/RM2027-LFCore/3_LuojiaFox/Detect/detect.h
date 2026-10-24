@@ -11,7 +11,6 @@ extern "C" {
 /* 所有需要检测的设备 */
 typedef enum {
     DETECT_RC = 0,
-    DETECT_PITCH_MOTOR,
     DETECT_WHEEL1,
     DETECT_WHEEL2,
     DETECT_WHEEL3,

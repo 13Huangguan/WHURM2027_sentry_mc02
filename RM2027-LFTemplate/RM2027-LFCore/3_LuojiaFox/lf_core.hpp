@@ -14,6 +14,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
 
+#include "Board_cfg/board_cfg.hpp"
 #include "remote_control.h"
 
 /* Exported macros -----------------------------------------------------------*/

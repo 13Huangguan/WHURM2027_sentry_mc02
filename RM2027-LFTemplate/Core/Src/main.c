@@ -32,7 +32,6 @@
 /* USER CODE BEGIN Includes */
 #include "dvc_bsp.h"
 #include "app_chassis.h"
-#include "app_motor.h"
 #include "remote_control.h"
 /* USER CODE END Includes */
 
@@ -135,7 +134,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   bspInit();
   remoteControlInit();
-  motorInit();
   Chassis_Init();
   /* USER CODE END 2 */
 

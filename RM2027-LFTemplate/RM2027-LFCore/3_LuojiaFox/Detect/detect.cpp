@@ -29,9 +29,6 @@ static void detectInit(uint32_t now)
     /* 单位全部是毫秒 */
     error_list[DETECT_RC].offline_time_ms = 100;
     error_list[DETECT_RC].online_time_ms = 100;
-    //-------------------测试GM6020设置(之后直接删除)-------------------------------------------------------------------
-    error_list[DETECT_PITCH_MOTOR].offline_time_ms = 10;
-    error_list[DETECT_PITCH_MOTOR].online_time_ms = 20;
     //-------------------底盘轮设置-----------------------------------------------------------------------------------
     for (uint8_t i = DETECT_WHEEL1; i <= DETECT_WHEEL4; ++i) {
         error_list[i].offline_time_ms = 10;

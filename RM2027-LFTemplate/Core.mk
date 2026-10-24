@@ -132,12 +132,11 @@ include $(CORE_DIR)/$(CORE_DIR).mk
 
 BUILD_SUCCESS = @echo -e "\033[2K\033[92mBuild success!\033[m\n"
 
-ifndef ECHO 
-HIT_TOTAL != ${MAKE} ${MAKECMDGOALS} --dry-run ECHO="HIT_MARK" | grep -c "HIT_MARK"
-HIT_COUNT = $(eval HIT_N != expr ${HIT_N} + 1)${HIT_N}
-ECHO = @echo -e "\033[2K\033[96;49;4m[`expr ${HIT_COUNT} '*' 100 / ${HIT_TOTAL}`%]Building:\033[m$(notdir $<)\r\c"
+ifndef ECHO
+# 百分比计算会递归执行一次完整的 make --dry-run，在 Windows 上非常慢。
+# 直接输出当前文件即可，不参与构建，也不影响增量编译。
+ECHO = @printf '\033[2K\033[96;49;4mBuilding:\033[m%s\n' '$(notdir $<)'
 endif
-# $(info $(HIT_TOTAL) $(HIT_COUNT) $(ECHO))
 
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
@@ -160,7 +159,8 @@ vpath %.s $(sort $(dir $(CPP_COMPILED)))
 OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(ASM_SOURCES:.s=.o)))
 vpath %.s $(sort $(dir $(ASM_SOURCES)))
 
-# Print info
+# Print info only in verbose mode.
+ifeq ($(VERBOSE),1)
 $(info Target: $(TARGET))
 $(info Core:   $(CORE_DIR))
 $(info )
@@ -168,6 +168,7 @@ $(info C sources: $(C_SOURCES))
 $(info CPP sources: $(CPP_SOURCES))
 $(info ASM sources: $(ASM_SOURCES))
 $(info )
+endif
 
 # Build .c files
 $(BUILD_DIR)/%.o: %.c Makefile | $(BUILD_DIR) 

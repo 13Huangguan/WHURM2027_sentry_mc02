@@ -7,6 +7,7 @@
 #include "cmsis_os.h"
 #include "fdcan.h"
 #include "dvc_motor.hpp"
+#include "lf_core.hpp"
 #include "remote_control.h"
 
 namespace {
@@ -62,6 +63,14 @@ float g_vxFiltered = 0.0f;
 float g_vyFiltered = 0.0f;
 float g_wzFiltered = 0.0f;
 bool g_forceReady = false;
+
+void PublishChassisVelocity(void) {
+    LuojiaFox::system_state.updateChassis({
+        g_vxFiltered,
+        g_vyFiltered,
+        g_wzFiltered
+    });
+}
 
 float ApplyDeadzone(float value) {
     return (basic_math::abs(value) < kRcDeadzone) ? 0.0f : value;
@@ -147,6 +156,7 @@ void EstimateBodyVelocity(
 }  // namespace
 
 void Chassis_Init(void) {
+    bspFdcanInit();
     bspFdcanInitTxFrame(&g_chassisTxFrame, &hfdcan1);
 
     ForceActuatorParam params[kWheelCount] = {};
@@ -236,6 +246,18 @@ void Chassis_MotorRxHandler(
     }
 }
 
+/**
+ * @brief 将 FDCAN 接收中断分发到底盘轮电机。
+ * @note 该入口原先位于已删除的云台 Pitch 测试应用中。
+ */
+extern "C" void bspFdcanRxHandler(
+    FDCAN_HandleTypeDef *hcan,
+    uint32_t identifier,
+    uint8_t *data
+) {
+    Chassis_MotorRxHandler(hcan, identifier, data);
+}
+
 void Chassis_Control(void) {
     float wheelOmega[kWheelCount];
 
@@ -260,6 +282,8 @@ void Chassis_Control(void) {
     g_wzFiltered = kVelocityFilterAlpha * g_wzFiltered +
                    (1.0f - kVelocityFilterAlpha) * wzRaw;
 
+    PublishChassisVelocity();
+
     const bool rcOnline = !getRcOffline();
     const bool locked =
         SWITCH_IS_DOWN(getDt7RcSw(RC_SW_RIGHT));
@@ -269,6 +293,7 @@ void Chassis_Control(void) {
         g_vxFiltered = vxRaw;
         g_vyFiltered = vyRaw;
         g_wzFiltered = wzRaw;
+        PublishChassisVelocity();
 
         ResetVelocityPids();
         g_chassisForce.setEnable(false);
