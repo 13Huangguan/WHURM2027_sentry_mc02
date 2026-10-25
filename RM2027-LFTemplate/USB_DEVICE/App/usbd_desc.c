@@ -140,6 +140,12 @@ USBD_DescriptorsTypeDef HS_Desc =
 , USBD_HS_SerialStrDescriptor
 , USBD_HS_ConfigStrDescriptor
 , USBD_HS_InterfaceStrDescriptor
+#if (USBD_CLASS_USER_STRING_DESC == 1)
+, NULL
+#endif /* USBD_CLASS_USER_STRING_DESC */
+#if ((USBD_LPM_ENABLED == 1U) || (USBD_CLASS_BOS_ENABLED == 1))
+, NULL
+#endif /* (USBD_LPM_ENABLED == 1U) || (USBD_CLASS_BOS_ENABLED == 1) */
 };
 
 #if defined ( __ICCARM__ ) /* IAR Compiler */

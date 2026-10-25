@@ -23,6 +23,8 @@ TxDebugState g_tx_debug = {};
 
 namespace {
 
+
+//------------------------------------------------------板内共享状态对象-------------------------------------------
 struct SharedState {
     ChassisToGimbalPayload chassis_data = {};
     GimbalToChassisPayload gimbal_data = {};
@@ -34,8 +36,11 @@ struct SharedState {
 };
 
 SharedState g_shared_state;
+//----------------------------------------------------------------------------------------------------------------
 uint32_t g_tx_sequence = 0U;
 
+
+//------------------------------------------------------发送状态检测-----------------------------------------------
 bool hasSequenceGap(uint32_t previous, uint32_t current) {
     return current != (previous + 1U);
 }
@@ -75,7 +80,10 @@ bool validateHeader(
            (payload[1] == board_cfg::kConfig.peer_board_id) &&
            (payload[2] == board_cfg::kConfig.self_board_id);
 }
+//-----------------------------------------------------------------------------------------------------
 
+
+//------------------------------------------------------发送底盘信息-----------------------------------------------
 void sendChassisData(uint32_t now_ms) {
     const LuojiaFox::SystemStateSnapshot state =
         LuojiaFox::system_state.read();
@@ -132,6 +140,8 @@ void sendChassisData(uint32_t now_ms) {
     recordTxResult(sent);
 }
 
+
+//------------------------------------------------------发送云台信息-----------------------------------------------
 void sendGimbalData(uint32_t now_ms) {
     const LuojiaFox::SystemStateSnapshot state =
         LuojiaFox::system_state.read();
@@ -167,6 +177,8 @@ void sendGimbalData(uint32_t now_ms) {
     recordTxResult(sent);
 }
 
+
+//------------------------------------------------------更新底盘状态------------------------------------------------
 void publishChassisRemoteState(
     const ChassisToGimbalPayload& payload,
     uint32_t now_ms
@@ -198,6 +210,8 @@ void publishChassisRemoteState(
     taskEXIT_CRITICAL();
 }
 
+
+//------------------------------------------------------更新云台状态------------------------------------------------
 void publishGimbalRemoteState(
     const GimbalToChassisPayload& payload,
     uint32_t now_ms
@@ -231,6 +245,8 @@ void publishGimbalRemoteState(
     taskEXIT_CRITICAL();
 }
 
+
+//-------------------------------------------------------通信帧分发-------------------------------------------------
 void processIncomingFrame(
     const communication_protocol::Frame& frame,
     uint32_t now_ms
@@ -265,6 +281,8 @@ void processIncomingFrame(
     publishChassisRemoteState(payload, now_ms);
 }
 
+
+//--------------------------------------------------发送本板信息------------------------------------------------
 void sendLocalState(uint32_t now_ms) {
     if (board_cfg::kIsChassisBoard) {
         sendChassisData(now_ms);
@@ -303,6 +321,8 @@ bool getRemoteGimbalData(GimbalToChassisPayload* output) {
     return available;
 }
 
+
+//------------------------------------------------------对端在线检测-----------------------------------------------
 bool isPeerOnline(uint32_t now_ms) {
     taskENTER_CRITICAL();
     const bool has_data = board_cfg::kIsChassisBoard
@@ -326,6 +346,10 @@ Statistics getStatistics() {
 
 } // namespace board_link
 
+
+
+
+//------------------------------------------------------板间通信任务-----------------------------------------------
 extern "C" void BoardLink_Task(void const* argument) {
     (void)argument;
 
@@ -333,7 +357,7 @@ extern "C" void BoardLink_Task(void const* argument) {
     uint32_t last_tx_ms = 0U;
     bool initialized = false;
     bool init_attempted = false;
-    bool tx_started = false;
+    bool tx_started = false;  //tx_started 的作用是保证第一次进入该分支时立即发送一帧，不用等待 10 ms
 
     for (;;) {
         const uint32_t now_ms = HAL_GetTick();

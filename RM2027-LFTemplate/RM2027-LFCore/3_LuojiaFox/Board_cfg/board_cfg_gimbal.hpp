@@ -1,5 +1,7 @@
 #pragma once
 //编译云台板：mingw32-make board-gimbal -j4
+//查看底盘发来的消息：g_shared_state.chassis_data
+//查看云台(本板)最近一次发送的消息：g_tx_debug
 namespace board_cfg {
 
 constexpr RoleConfig kConfig = {

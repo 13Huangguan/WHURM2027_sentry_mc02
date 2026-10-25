@@ -138,8 +138,12 @@ ifndef ECHO
 ECHO = @printf '\033[2K\033[96;49;4mBuilding:\033[m%s\n' '$(notdir $<)'
 endif
 
+# 烧录和调试统一使用最近一次成功构建的 ELF。
+LATEST_ELF = build/$(TARGET).elf
+
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
+	$(Q)if [ "$(BUILD_DIR)/$(TARGET).elf" != "$(LATEST_ELF)" ]; then cp -f "$(BUILD_DIR)/$(TARGET).elf" "$(LATEST_ELF)"; fi
 	$(ECHO) $@
 	$(BUILD_SUCCESS)
 	$(SZ) $(BUILD_DIR)/$(TARGET).elf
