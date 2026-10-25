@@ -51,7 +51,6 @@
 #define SEND_DURATION_SentryInfo   10// ms
 #define SEND_DURATION_MapCommand 10 // ms
 #define SEND_DURATION_InitSpeed 10 // ms
-#define SEND_DURATION_SmcDebug  5  // ms
 
 // clang-format on
 
@@ -110,7 +109,6 @@ void Usb::Init(void)
     memset(&receive_robot_cmd, 0, sizeof(ReceiveDataRobotCmd_s));
     memset(&receive_pid_debug, 0, sizeof(ReceiveDataPidDebug_s));
     memset(&receive_virtual_rc, 0, sizeof(ReceiveDataVirtualRc_s));
-    memset(&receive_smc_debug, 0, sizeof(ReceiveDataSmcDebug_s));
     memset(&robot_cmd, 0, sizeof(RobotCmdData_t));
     memset(&virtual_rc, 0, sizeof(RcControl));
 
@@ -260,13 +258,6 @@ void Usb::Init(void)
         (uint8_t *)(&send_init_speed.frame_header),
         sizeof(send_init_speed.frame_header));
 
-    // 17.初始化 SMC 调参遥测数据
-    send_smc_debug.frame_header.sof = SEND_SOF;
-    send_smc_debug.frame_header.len = (uint8_t)(sizeof(SendDataSmcDebug_s) - 6);
-    send_smc_debug.frame_header.id = SMC_DEBUG_DATA_SEND_ID;
-    append_CRC8_check_sum(  // 添加帧头 CRC8 校验位
-        (uint8_t *)(&send_smc_debug.frame_header),
-        sizeof(send_smc_debug.frame_header));
 }
 
 /**
@@ -309,7 +300,6 @@ void Usb::SendAll(void)
 
     CheckDurationAndSend(InitSpeed);
 
-    CheckDurationAndSend(SmcDebug);
 }
 
 /**
@@ -360,11 +350,6 @@ void Usb::Receive(void)
                     case SENTRY_CMD_RECEIVE_ID: {
                         memcpy(
                             &receive_sentry_cmd, sof_address, sizeof(ReceiveDataSentryCmd_s));
-                    } break;
-                    case SMC_DEBUG_DATA_RECEIVE_ID: {
-                        memcpy(
-                            &receive_smc_debug, sof_address, sizeof(ReceiveDataSmcDebug_s));
-                        smc_debug_updated = true;
                     } break;
                     default:
                         break;
@@ -680,20 +665,6 @@ void Usb::SendInitSpeed(void)
     USB_Transmit((uint8_t *)&send_init_speed, sizeof(SendInitSpeed_s));
 }
 
-/**
- * @brief 发送 SMC 调参遥测数据
- * @note  只有调参模块调用过 SetSmcDebug() 后才开始发送，避免上电空发。
- */
-void Usb::SendSmcDebug(void)
-{
-    if (!smc_debug_active) {
-        return;
-    }
-
-    send_smc_debug.time_stamp = HAL_GetTick();
-    append_CRC16_check_sum((uint8_t *)&send_smc_debug, sizeof(SendDataSmcDebug_s));
-    USB_Transmit((uint8_t *)&send_smc_debug, sizeof(SendDataSmcDebug_s));
-}
 
 /*******************************************************************************/
 /* Receive Function                                                            */
@@ -757,50 +728,7 @@ uint32_t Usb::GetSentryCmd(void)
 /* Public Function                                                             */
 /*******************************************************************************/
 
-/**
- * @brief 更新 SMC 调参遥测缓存
- * @note  由调参模块每周期调用，实际发送由 SendSmcDebug() 按周期完成。
- */
-void Usb::SetSmcDebug(
-    float target_rpm,
-    float actual_rpm,
-    float output,
-    float surface,
-    float error,
-    bool enabled,
-    bool online,
-    uint8_t status
-)
-{
-    send_smc_debug.data.target_rpm = target_rpm;
-    send_smc_debug.data.actual_rpm = actual_rpm;
-    send_smc_debug.data.output = output;
-    send_smc_debug.data.surface = surface;
-    send_smc_debug.data.error = error;
-    send_smc_debug.data.enabled = enabled ? 1U : 0U;
-    send_smc_debug.data.online = online ? 1U : 0U;
-    send_smc_debug.data.status = status;
-    send_smc_debug.data.reserved = 0U;
-    smc_debug_active = true;
-}
 
-/**
- * @brief 取出最近一次 SMC 调参指令
- * @param command 输出的指令缓存
- * @return true 表示有新指令
- * @note  指令由 usb_task 写入，调参模块在 CAN 任务中读取。
- *        各字段是 32 位对齐读写，单次拷贝即使与新帧交错也只会影响一个控制周期。
- */
-bool Usb::TakeSmcDebugCommand(ReceiveDataSmcDebug_s *command)
-{
-    if ((command == nullptr) || !smc_debug_updated) {
-        return false;
-    }
-
-    *command = receive_smc_debug;
-    smc_debug_updated = false;
-    return true;
-}
 
 /**
  * @brief 修改调试数据包

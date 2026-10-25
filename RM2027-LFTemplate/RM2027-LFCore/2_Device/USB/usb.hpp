@@ -45,7 +45,6 @@ typedef struct
     uint32_t SentryInfo;
     uint32_t MapCommand;
     uint32_t InitSpeed;
-    uint32_t SmcDebug;
 } LastSendTime_t;
 
 typedef struct  // 底盘速度向量结构体
@@ -132,20 +131,6 @@ public:
     /* 调试数据通道 */
     void ModifyDebugData(uint8_t index, float data, const char *name);
 
-    /* SMC 调参遥测：由调参模块每周期写入，Usb 按周期发送 */
-    void SetSmcDebug(
-        float target_rpm,
-        float actual_rpm,
-        float output,
-        float surface,
-        float error,
-        bool enabled,
-        bool online,
-        uint8_t status
-    );
-
-    /* 取出最近一次 SMC 调参指令，返回 false 表示没有新指令 */
-    bool TakeSmcDebugCommand(ReceiveDataSmcDebug_s *command);
 
     /**
      * @brief 哨兵决策状态
@@ -186,7 +171,6 @@ private:
     SendDataSentryInfo_s  send_sentry_info;
     SendDataMapCmd_s      send_map_command;
     SendInitSpeed_s       send_init_speed;
-    SendDataSmcDebug_s    send_smc_debug;
     // clang-format on
 
     /* 数据接收结构体 */
@@ -194,11 +178,7 @@ private:
     ReceiveDataPidDebug_s receive_pid_debug;
     ReceiveDataVirtualRc_s receive_virtual_rc;
     ReceiveDataSentryCmd_s receive_sentry_cmd;
-    ReceiveDataSmcDebug_s receive_smc_debug;
 
-    /* SMC 调参指令更新标志：写入在 usb_task，读取在 CAN 任务 */
-    volatile bool smc_debug_updated = false;
-    volatile bool smc_debug_active = false;
 
     /* 控制指令数据 */
     RobotCmdData_t robot_cmd;
@@ -229,7 +209,6 @@ private:
     void SendSentryInfo(void);
     void SendMapCommand(void);
     void SendInitSpeed(void);
-    void SendSmcDebug(void);
 
     /* 接收数据解包 */
     void UpdateRobotCmd(void);

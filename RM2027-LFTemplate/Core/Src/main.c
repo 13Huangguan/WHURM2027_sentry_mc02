@@ -33,8 +33,6 @@
 #include "bsp_can.h"
 #include "dvc_bsp.h"
 #include "app_chassis.h"
-#include "app_smc_tune.h"
-#include "app_lk_test.h"
 #include "remote_control.h"
 /* USER CODE END Includes */
 
@@ -142,11 +140,6 @@ int main(void)
   /* 启动三路 FDCAN；底盘/云台/发射模块随后自行注册电机 */
   bspFdcanInit();
 
-  /* 电机测试仅显式启用，模板默认不创建测试任务 */
-  // lkTestInit();
-
-  /* 2006 SMC 在线调参模块：仅显式测试时启用 */
-  // smcTuneInit();
   Chassis_Init();
   /* USER CODE END 2 */
 

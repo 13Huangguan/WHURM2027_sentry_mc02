@@ -29,13 +29,11 @@
 #define SENTRYINFO_SEND_ID        ((uint8_t)0x0E)
 #define MAP_COMMAND_SEND_ID       ((uint8_t)0x0F)
 #define INIT_SPEED_SEND_ID        ((uint8_t)0x10)
-#define SMC_DEBUG_DATA_SEND_ID    ((uint8_t)0x11)
 
 #define ROBOT_CMD_DATA_RECEIVE_ID  ((uint8_t)0x01)
 #define PID_DEBUG_DATA_RECEIVE_ID  ((uint8_t)0x02)
 #define VIRTUAL_RC_DATA_RECEIVE_ID ((uint8_t)0x03)
 #define SENTRY_CMD_RECEIVE_ID      ((uint8_t)0x04)
-#define SMC_DEBUG_DATA_RECEIVE_ID  ((uint8_t)0x05)
 // clang-format on
 
 //后续迁移到其他文件中整体定义
@@ -412,25 +410,6 @@ typedef struct
     uint16_t crc;
 } __packed__ SendInitSpeed_s;
 
-// SMC 调参遥测数据包
-typedef struct
-{
-    FrameHeader_t frame_header;  // 数据段id = 0x11
-    uint32_t time_stamp;
-    struct
-    {
-        float target_rpm;  // 斜坡处理后的目标转速，转子 rpm
-        float actual_rpm;  // 实际转速，转子 rpm
-        float output;      // SMC 输出（M2006 为原始电流量）
-        float surface;     // 滑模面 s
-        float error;       // 速度误差 v_error
-        uint8_t enabled;   // 当前是否实际输出
-        uint8_t online;    // 电机是否在线
-        uint8_t status;    // 0 停止，1 运行，2 USB 离线，3 电机离线
-        uint8_t reserved;
-    } __packed__ data;
-    uint16_t crc;
-} __packed__ SendDataSmcDebug_s;
 
 /*-------------------- Receive --------------------*/
 typedef struct RobotCmdData
@@ -499,26 +478,5 @@ typedef struct
     uint16_t crc;
 } __packed__ ReceiveDataSentryCmd_s;
 
-// SMC 调参下行数据包
-typedef struct
-{
-    FrameHeader_t frame_header;  // 数据段id = 0x05
-    uint32_t time_stamp;
-    struct
-    {
-        float j;                 // 等效惯量
-        float k;                 // 趋近律增益
-        float c;                 // 滑模面系数
-        float epsilon;           // 趋近律参数
-        float limit;             // 饱和函数限幅
-        float u_max;             // 控制量限幅
-        float target_rpm;        // 目标转速，转子 rpm
-        float target_slew_rpm_s; // 目标转速变化率限制，rpm/s；不是实际转速
-        uint8_t enable;          // 1 输出，0 停止
-        uint8_t reset;           // 1 清空 SMC 状态
-        uint16_t reserved;
-    } __packed__ data;
-    uint16_t crc;
-} __packed__ ReceiveDataSmcDebug_s;
 
 #endif  // USB_TYPEDEF_H
