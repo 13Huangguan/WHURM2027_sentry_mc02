@@ -115,18 +115,14 @@ public:
         return range_;
     }
 
-    /** @brief 一致性快照，包含同一时刻的反馈、计数和在线状态。 */
-    MotorSnapshot<DmMotorData> readSnapshot() const { return snapshotOf(data_); }
-
-    /** @brief 返回反馈副本；需要计数/在线状态时使用 readSnapshot()。 */
-    DmMotorData data() const { return readSnapshot().data; }
+    /** @brief 在短临界区内复制反馈；在线状态和接收计数由 MotorBase 查询。 */
+    DmMotorData data() const
+    {
+        MotorCriticalSection lock;
+        return data_;
+    }
 
 private:
-    bool faultKnown() const override
-    {
-        return data_.initialized && (data_.state <= 1U || data_.state >= 8U);
-    }
-    bool reportedFault() const override { return data_.initialized && data_.state >= 8U; }
     uint32_t modeOffset() const;
     static float uintToFloat(uint16_t value, float min_value, float max_value, uint8_t bits);
     static uint16_t floatToUint(float value, float min_value, float max_value, uint8_t bits);

@@ -1,6 +1,8 @@
 # 电机与 CAN 模板使用约定
 
-模板默认不调用 `lkTestInit()` 或 `smcTuneInit()`，保留两个测试模块的源码和编译检查。
+模板默认不调用 `lkTestInit()` 或 `smcTuneInit()`，当前调参入口为 `Tuning/bench_motors.cpp`。
+历史独立 SMC 示例依赖已移除的 `ReceiveDataSmcDebug_s` 等旧 USB 接口，单独启用
+`LEGACY_MOTOR_TESTS` 编译它之前需先恢复相应接口；本次同步单位未恢复旧协议。
 LK 测试显式启用后，等待有效反馈才使能，离线即停止，默认以 3 rad/s、0.5 Hz 运行 10 秒。
 SMC 测试显式启用后，仍需 USB 指令使能；USB 或电机离线时输出归零。
 
@@ -25,14 +27,49 @@ DM 反馈 ID 按电机上位机实际配置填写，支持独立的 ID 0；不�
 | DJI `setCommand()` | 幅值仍为原始电流/电压控制单位，但符号按机构方向；发送时应用方向 |
 | DJI `sendFrame()` | 底层原始槽位接口，不应用方向、不限幅；不要与同 ID 的 `sendGroup()` 混用 |
 | DJI 反馈 `encoder/velocity_rpm/current_raw/raw` | 原始协议值，保留电机本体方向 |
-| DJI `velocity_rad_s/angle_deg/total_angle_deg` | 机构输出轴反馈，应用方向和减速比 |
+| DJI `velocity_rad_s/angle_rad/total_angle_rad` | 机构输出轴 rad/s、rad，应用方向和减速比 |
+| DJI `current_a` | 按 `init()` 指定的 A/LSB 反馈比例换算并应用方向；默认沿用 SENTRY 的 0.001，须核实固件/实测 |
 | LK 速度/位置指令及换算反馈 | 机构输出轴 rad/s、rad；电流 A 按机构方向，原始 `iq_raw/speed_dps/encoder/raw` 保留本体值 |
 | DM 位置/速度/力矩 | 机构输出轴 rad、rad/s、N·m；外部减速按理想无损传动换算 |
 
 DJI 默认使用型号减速比，`init()` 的比例传 0 选择型号默认值。
-LK、DM 协议本身通常已报告自带减速器的输出轴，默认比例为 1，不能再次乘内置减速比。
-LK 的编码器零值对应角度 0，单圈角度折返后再按外部减速比换算；没有累计圈数。
-LK 位置指令保留原驱动的协议轴 ±360° 限幅，速度上限为协议轴 360 deg/s。
+控制任务统一使用位置 rad、角速度 rad/s、角加速度 rad/s²、电流 A、力矩 N·m、周期 s。
+这与 SENTRY 的 `motor.h`、`CAN_receive.c` 和云台控制任务的单位一致。
+DJI 发送值仍与 SENTRY 的 `set.value` 一样使用原始控制编码，GM6020 输出不是以 V 为单位的电压。
+`encoder/velocity_rpm/current_raw` 等明确标注的原始字段只用于协议诊断。
+LF 的运动学反馈保留现有机构输出轴定义；SENTRY 的 DJI 接收层使用转子轴，移植时仍需核对减速比。
+
+| DJI 型号 | 默认减速比 | `setCommand()` 输出范围（原始控制编码） |
+| --- | --- | --- |
+| GM6020 | 1 | 电压量 -25000 ~ 25000 |
+| M3508 P19 | 3591/187 ≈ 19.2032 | 电流量 -16384 ~ 16384（指令对应 ±20 A） |
+| M2006 P36 | 36 | 电流量 -10000 ~ 10000（指令对应 ±10 A） |
+
+输出上限集中定义在 `dvc_dji_motor.hpp` 的 `DJI_*_MAX_COMMAND` 常量中，驱动与调参台共用。
+GM6020 的 ±25000 是本地 20231013 版使用说明规定的电压指令范围，也与 SENTRY 大 yaw 配置一致。
+M3508 裸电机、改装减速箱应显式传入实际减速比，不能套用 P19 原装减速比。
+本地 DJI 手册只明确了指令电流量程，未明确反馈电流 A/LSB。`init()` 最后一个参数
+`feedback_current_a_per_lsb` 可配置反馈比例；默认 0.001 为 SENTRY 兼容约定，不能视为厂家确认值，
+也不能从指令的 ±16384→±20 A 或 ±10000→±10 A 直接推定反馈比例。
+GM6020 新固件另有电流模式（0x1FE/0x2FE，±16384 对应 ±3 A），本驱动的 GM6020 仍为电压模式。
+应用控制器可按机构需要设置更低的上限。直接调用 `sendFrame()` 时由调用方限幅。
+
+LK 手册中的位置、速度指令为电机轴量；有内置减速箱时，比例必须包含该减速箱，
+例如协议电机轴转 10 圈、输出轴转 1 圈应传 10。当前无减速 MF 调参配置仍为 1。
+DM 的比例按其固件实际协议轴设置，避免重复计入已经在驱动器内换算的减速比。
+LK 的编码器零值对应角度 0，单圈角度折返后再按减速比换算；0x9C 不提供累计圈数。
+`sendPosition(angle_rad, max_velocity_rad_s)` 的两个参数统一使用机构轴 rad、rad/s，
+驱动内部才换成角度制协议编码；例如 `sendPosition(1.57f, 3.141592654f)` 约为 90°、180°/s。
+0xA3/0xA4 为多圈位置命令，角度编码为 int32 的 0.01°，0xA4 最大速度编码为 uint16 的 deg/s。
+驱动不再把目标裁成 ±360° 或把速度裁成 360 deg/s；编码溢出及小于一个速度量化单位的非零上限
+返回 false。机构实际运动范围由应用限位和驱动器 Max Angle/Max Speed 等参数决定。
+当前调参台仍保留一圈目标范围，外部 SMC 仍使用单圈反馈；多圈指令支持不等于多圈闭环反馈支持。
+`sendSpeed(velocity_rad_s, current_limit_a)` 的电流上限以 A 输入，MF 限幅到 16.5 A，
+MG 限幅到 33 A；0 原样发送编码 0，手册未定义其特殊含义，需按固件验证。
+非零但小于 1 LSB 的电流上限拒绝发送，避免量化为 0。显式原始接口 `sendTorqueCurrent()` 仍接收 ±2048 编码。
+DJI 原 `angle_deg/total_angle_deg` 已改为 `angle_rad/total_angle_rad`，调用方无需再乘角度转弧度系数。
+
+本次核对的手册、页码及保留事项见 [本地手册核对记录](MANUAL_REVIEW.md)。
 
 DM MIT 的 `kp/kd` 也按机构轴定义，传入电机时除以外部减速比的平方。
 MIT 有限数值按电机参数范围限幅；NaN/无穷输入拒绝发送。
@@ -66,19 +103,23 @@ bool queued = DjiMotor::sendGroup(&hfdcan1, 0x200);
 它只汇总已注册的 DJI 对象；应用负责指令更新周期和唯一发送任务。
 所有发送 API 返回 true 只表示已写入硬件 FIFO，不能作为电机执行成功的确认。
 
-## 反馈快照与输出许可
+## 反馈读取与输出许可
 
 ```cpp
-const auto feedback = motor.readSnapshot();
-// feedback.data、last_rx_tick、rx_count、online 在同一短临界区复制。
-// feedback.fault_known == false 时，不能从 fault == false 推断电机无故障。
+const auto feedback = motor.data();
+const bool online = motor.isOnline();
+const uint32_t rx_count = motor.rxCount();
+const uint32_t last_rx_tick = motor.lastRxTick();
 ```
 
-`data()` 返回独立副本；需要反馈和元信息保持一致时用 `readSnapshot()`。
+`data()` 在短临界区内返回反馈副本；在线检测、接收计数和接收时间沿用基类接口，
+不另建快照结构。确需将这几项一起读取时，调用方可用 `MotorCriticalSection` 包住读取操作。
 tick 为 0 的有效反馈同样在线；离线判断支持 uint32_t 节拍回绕。
-DJI 原始反馈和 LK 0x9C 不携带完整故障字，因此快照标记 `fault_known = false`。
-DM 反馈状态 0/1 表示未报告故障，8~15 表示故障，其他保留状态标记未知。
-故障状态仍是有效通信，`online` 与 `fault` 独立。
+C610/C620 反馈 DATA[7] 保存在 `error_code` 中，收到有效反馈后非零表示驱动器报错。
+C610 DATA[6] 是保留位，`temperature_valid = false`，不能把数值 0 当作实测温度。
+GM6020 和 LK 0x9C 不携带故障字段，不能从在线状态推断无故障。
+DM 直接读取反馈 `state`：0/1 表示未报告故障，8~15 表示故障，其他为保留状态。
+故障帧仍是有效通信；应用按型号解释原始故障字段，驱动不再提供统一故障快照。
 
 应用应结合遥控/上位机在线、急停、温度、驱动器故障和机构限位决定输出许可。
 DJI 失去许可后持续发送零控制量；LK/DM 使用对应停止/失能指令，并按反馈有限重试。
@@ -107,9 +148,12 @@ Bus-off 锁存后拒绝发送。由应用停止该总线所有发送者，再在
 
 ## 验证
 
-运行 `python tests/run_motor_tests.py` 单独检查电机/CAN，或运行
-`python tests/run_host_tests.py` 执行全部主机回归。
-主机测试使用实际电机和 BSP 源码，HAL 仅为测试适配器；不替代 MC02 上的波形、
+`python tests/run_host_tests.py` 执行算法和遥控器等主机回归。
+`tests/run_motor_unit_tests.py` 中的故障断言仍依赖已移除的快照接口，当前不能直接编译；
+本次保持 `tests` 原样，在 `build/snapshot_cleanup/motor_units_current_api.cpp` 临时副本中
+改为检查 `data()`、`isOnline()` 和原始错误码，电机单位、输出限幅、LK 编码及 SMC 换算均通过。
+实际调参模块的故障启动拒绝和运行中故障停机验证也通过。
+这些主机检查使用实际电机和 SMC 源码，CAN/HAL 为测试适配器；不替代 MC02 上的波形、
 总线负载、驱动器故障与恢复实测。
 
 协议参考：[达妙 SDK](https://github.com/dmBots/motor-sdk)，

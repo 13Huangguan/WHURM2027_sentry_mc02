@@ -50,11 +50,15 @@ FDCAN 中断分发。没有复制外部 `can_service` 或另写 HAL 接收回调
 ```cpp
 supercapSetEnabled(false); // 撤销 DCDC 许可，例如机器人禁用或急停。
 supercapSetEnabled(true);  // 恢复许可，仍须满足裁判数据有效和新鲜。
-const auto feedback = supercapReadSnapshot();
+const auto feedback = supercapGetFeedback(); // C++：直接读取 SupercapFeedback。
+const auto status = supercapGetStatus();    // C/C++：查询应用状态。
 ```
 
 许可请求保持不变时，裁判通信恢复后会恢复对应使能状态。
-发送成功表示入硬件 FIFO，不表示超电已经执行；`enable_sent` 同样只表示使能帧成功入队。
+发送成功表示入硬件 FIFO，不表示超电已经执行。
+`SupercapFeedback` 直接包含 `last_rx_tick`、`rx_count` 和 `online`；读取时重新判定超时。
+应用层只保留运行状态和使能请求，不重复缓存设备反馈，也不另建快照结构。
+CAN 收发诊断可查询现有 `bspFdcanGetStats()`。
 
 ## 帧格式
 
@@ -90,13 +94,13 @@ if (supercapGetChassisPowerLimit(&watts)) {
 ```
 
 保留现有 `Algorithm/Power`，本次未新增另一套功率算法，也未编写具体机器人的底盘任务。
-现有算法会乘姿态倍率和裕度，最终预算必须约束在超电给出的硬上限以内。
-其 `powerControllerSetRefereeLimit(0)` 会忽略更新，不能用传零代替停机。
+功率算法使用 `powerControllerSetPowerLimit()` 接收超电硬上限，姿态倍率和裕度只能降低预算。
+预算不可用时传入 0，本轮输出零电流；旧名称 `powerControllerSetRefereeLimit()` 行为相同。
+算法会复核最终输出的模型功率，应用还应处理 `BudgetInfeasible` 状态。
 
 ## 验证
 
-`python tests/run_host_tests.py` 执行全套回归。
-`python tests/run_supercap_tests.py` 覆盖设备初始化不创建线程、默认使能、裁判数据过滤、
-反馈等待、裁判失联/过期时失能，以及任务在 FreeRTOS 中定义的结构检查。
-`python tests/run_motor_tests.py` 覆盖共用 BSP 的接收分发及协议字节校验。
-这些测试不替代实际反馈 ID 确认和上板验证。
+`python tests/run_host_tests.py` 执行算法、遥控器和计时等主机回归，不包含超电测试。
+本次主固件和本地调参固件均编译通过；临时超电检查位于 `build/snapshot_cleanup`，
+覆盖 tick 为零、超时边界、节拍回绕、反馈复位、控制帧字节、无效预算拒绝和裁判失联失能。
+`tests` 目录保持原样。以上检查不替代实际反馈 ID 确认和上板验证。

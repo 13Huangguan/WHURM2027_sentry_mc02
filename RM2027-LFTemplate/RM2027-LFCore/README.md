@@ -109,16 +109,17 @@ MotorBase::registerMotor(dial_motor);
 dial_motor.sendEnable();
 dial_motor.sendSpeed(20.0f);          // 20 rad/s，输出轴
 
-// 或位置控制：目标 1.57 rad，最大 180 dps
-dial_motor.sendPosition(1.57f, 180U);
+// 或位置控制：目标 1.57 rad，最大 3.14 rad/s（约 180 deg/s）
+dial_motor.sendPosition(1.57f, 3.141592654f);
 
 // 反馈
-const auto snapshot = dial_motor.readSnapshot();
-const auto& fdb = snapshot.data;
+const auto fdb = dial_motor.data();
+const bool online = dial_motor.isOnline();
 // fdb.angle_rad / fdb.velocity_rad_s / fdb.current_a / fdb.temperature
 ```
 
-`sendSpeed()` 的第二个参数是最大转矩电流（-2048~2048），0 表示使用驱动器默认值。
+`sendSpeed()` 的第二个参数是最大转矩电流幅值（A），MF 上限 16.5 A、MG 上限 33 A。
+0 原样发送编码 0，其具体行为需核实驱动固件。`sendPosition()` 接收多圈 rad 目标及 rad/s 速度上限。
 驱动器不主动上报时可以周期调用 `dial_motor.sendReadStatus()`。
 
 测试模块：`4_Application/Motor/app_lk_test.cpp` 默认输出 0.5 Hz、幅值 3 rad/s 的

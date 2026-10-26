@@ -34,6 +34,59 @@ const float BASIC_MATH_CELSIUS_TO_KELVIN = 273.15f;
 
 /* Function prototypes -------------------------------------------------------*/
 
+basic_math::QuadraticResult basic_math::solveQuadratic(float a, float b, float c) {
+    if (!std::isfinite(a) || !std::isfinite(b) || !std::isfinite(c)) {
+        return { QuadraticStatus::InvalidInput, 0.0f, 0.0f };
+    }
+    if (a == 0.0f) {
+        if (b == 0.0f) {
+            return { c == 0.0f ? QuadraticStatus::InfiniteRoots : QuadraticStatus::NoRealRoots,
+                     0.0f, 0.0f };
+        }
+        const float root = -c / b;
+        if (!std::isfinite(root)) {
+            return { QuadraticStatus::NumericalError, 0.0f, 0.0f };
+        }
+        return { QuadraticStatus::OneRealRoot, root, root };
+    }
+    // x*(a*x+b)=0；直接求零根，避免很小的 b 在判别式平方时下溢。
+    if (c == 0.0f) {
+        const float root = -b / a;
+        if (!std::isfinite(root)) {
+            return { QuadraticStatus::NumericalError, 0.0f, 0.0f };
+        }
+        return { b == 0.0f ? QuadraticStatus::OneRealRoot : QuadraticStatus::TwoRealRoots,
+                 fminf(root, 0.0f), fmaxf(root, 0.0f) };
+    }
+
+    const float norm = fmaxf(abs(a), fmaxf(abs(b), abs(c)));
+    const float an = a / norm;
+    const float bn = b / norm;
+    const float cn = c / norm;
+    if (an == 0.0f || (b != 0.0f && bn == 0.0f) || (c != 0.0f && cn == 0.0f)) {
+        return { QuadraticStatus::NumericalError, 0.0f, 0.0f };
+    }
+    const float discriminant = bn * bn - 4.0f * an * cn;
+    if (discriminant < 0.0f) {
+        return { QuadraticStatus::NoRealRoots, 0.0f, 0.0f };
+    }
+    if (discriminant == 0.0f) {
+        const float root = (-0.5f * bn) / an;
+        if (!std::isfinite(root)) {
+            return { QuadraticStatus::NumericalError, 0.0f, 0.0f };
+        }
+        return { QuadraticStatus::OneRealRoot, root, root };
+    }
+
+    const float q = -0.5f * (bn + copysignf(sqrtf(discriminant), bn));
+    const float first = q / an;
+    const float second = cn / q;
+    if (!std::isfinite(first) || !std::isfinite(second)) {
+        return { QuadraticStatus::NumericalError, 0.0f, 0.0f };
+    }
+    return { QuadraticStatus::TwoRealRoots, fminf(first, second), fmaxf(first, second) };
+}
+
 /**
  * @brief 布尔值反转
  *

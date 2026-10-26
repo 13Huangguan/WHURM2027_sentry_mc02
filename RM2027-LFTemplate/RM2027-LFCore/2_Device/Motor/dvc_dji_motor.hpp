@@ -19,6 +19,13 @@
 /** @brief DJI 编码器一圈的计数 */
 constexpr uint16_t kDjiEncoderRange = 8192U;
 
+/** @brief 手册规定的原始指令上限；GM6020 为电压模式，M3508/M2006 为电流模式 */
+constexpr int16_t DJI_GM6020_MAX_COMMAND = 25000;
+constexpr int16_t DJI_M3508_MAX_COMMAND = 16384;
+constexpr int16_t DJI_M2006_MAX_COMMAND = 10000;
+/** @brief M3508 P19 原装减速箱精确减速比，裸电机或改装减速箱需显式覆盖 */
+constexpr float DJI_M3508_DEFAULT_REDUCTION_RATIO = 3591.0f / 187.0f;
+
 /* Exported types ------------------------------------------------------------*/
 
 /**
@@ -28,11 +35,14 @@ struct DjiMotorData {
     uint16_t encoder = 0;         /*!< 当前编码器值，0~8191 */
     uint16_t last_encoder = 0;    /*!< 上次编码器值 */
     int16_t velocity_rpm = 0;     /*!< 转子转速，rpm */
-    int16_t current_raw = 0;      /*!< 电流/电压原始控制量 */
-    uint8_t temperature = 0;      /*!< 温度，摄氏度 */
+    int16_t current_raw = 0;      /*!< 反馈电流原始值，与输出电压/电流指令独立 */
+    uint8_t temperature = 0;      /*!< 温度，摄氏度；temperature_valid 为 true 时有效 */
+    bool temperature_valid = false; /*!< GM6020/C620 有温度，C610 的对应字节为保留位 */
+    uint8_t error_code = 0;       /*!< C610/C620 的 DATA[7] 错误码；GM6020 不提供 */
     float velocity_rad_s = 0.0f;  /*!< 输出轴角速度，rad/s */
-    float angle_deg = 0.0f;       /*!< 相对上电位置的角度，-180~180 */
-    float total_angle_deg = 0.0f; /*!< 连续累计角度，deg */
+    float current_a = 0.0f;       /*!< 按 init() 的反馈电流比例换算为 A 并应用方向 */
+    float angle_rad = 0.0f;       /*!< 相对首帧位置的输出轴角度，-pi~pi，rad */
+    float total_angle_rad = 0.0f; /*!< 输出轴连续累计角度，rad */
     uint8_t raw[8] = {};          /*!< 最近一帧原始反馈数据 */
     bool initialized = false;     /*!< 是否收到过反馈 */
 };
@@ -60,10 +70,12 @@ public:
      * @param bus             FDCAN 句柄
      * @param direction       安装方向，1 或 -1
      * @param reduction_ratio 输出轴减速比，传 0 使用型号默认值
+     * @param feedback_current_a_per_lsb 反馈电流 A/LSB，默认沿用 SENTRY 的 0.001；
+     *                        本地手册未明确反馈电流比例，须按驱动固件/实测核实，不能套用指令比例
      * @return true 配置成功
      */
     bool init(MotorType type, uint8_t id, FDCAN_HandleTypeDef* bus, int8_t direction = 1,
-              float reduction_ratio = 0.0f);
+              float reduction_ratio = 0.0f, float feedback_current_a_per_lsb = 0.001f);
 
     bool update(uint32_t identifier, const uint8_t* data, uint8_t length = 8U) override;
     void reset() override;
@@ -103,20 +115,22 @@ public:
 
     /**
      * @brief 设置机构方向的控制量，发送时应用 direction；幅值仍为协议原始单位
-     * @param value GM6020 为电压量（-30000~30000），M3508 为电流量（-16384~16384），
+     * @param value GM6020 为电压量（-25000~25000），M3508 为电流量（-16384~16384），
      *              M2006 为电流量（-10000~10000），超出范围会自动限幅
      */
     void setCommand(int16_t value);
 
-    /** @brief 一致性快照，包含同一时刻的反馈、计数和在线状态。 */
-    MotorSnapshot<DjiMotorData> readSnapshot() const { return snapshotOf(data_); }
-
-    /** @brief 返回反馈副本；需要计数/在线状态时使用 readSnapshot()。 */
-    DjiMotorData data() const { return readSnapshot().data; }
+    /** @brief 在短临界区内复制反馈；在线状态和接收计数由 MotorBase 查询。 */
+    DjiMotorData data() const
+    {
+        MotorCriticalSection lock;
+        return data_;
+    }
 
 private:
     DjiMotorData data_;
     int16_t command_;
+    float feedback_current_a_per_lsb_;
 };
 
 /************************ COPYRIGHT(C) WHU-LuojiaFox **************************/

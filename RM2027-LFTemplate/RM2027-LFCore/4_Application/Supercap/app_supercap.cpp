@@ -13,7 +13,7 @@ private:
     uint32_t mask_;
 };
 Supercap capacitor;
-SupercapAppSnapshot state{};
+SupercapAppStatus status = SUPERCAP_NOT_CONFIGURED;
 bool initialized = false;
 // 与提供的 superpower_task.c 一致，默认请求使能 DCDC。
 bool enabled_request = true;
@@ -32,7 +32,7 @@ void superpower_task(void const* argument)
             && referee_data.buffer_received
             && now - referee_data.power_tick <= SUPERCAP_REFEREE_TIMEOUT_MS
             && now - referee_data.buffer_tick <= SUPERCAP_REFEREE_TIMEOUT_MS;
-        const auto feedback = capacitor.readSnapshot();
+        const auto feedback = capacitor.data();
         SupercapControl command;
         bool requested;
         { IrqLock lock; requested = enabled_request; }
@@ -40,24 +40,12 @@ void superpower_task(void const* argument)
         command.enable_dcdc = requested && values_ready && fresh;
         command.charging_limit_ratio = SUPERCAP_CHARGING_LIMIT_RATIO;
         // 无首帧有效裁判值时不发送；离线后沿用有效值并发送失能。
-        const bool queued = values_ready && capacitor.sendControl(command);
+        if (values_ready) { (void)capacitor.sendControl(command); }
         {
             IrqLock lock;
-            if (values_ready) {
-                if (queued) { ++state.tx_ok; } else { ++state.tx_failed; }
-            }
-            state.status = !values_ready ? SUPERCAP_WAIT_REFEREE
+            status = !values_ready ? SUPERCAP_WAIT_REFEREE
                 : !fresh ? SUPERCAP_REFEREE_OFFLINE
                 : !feedback.online ? SUPERCAP_WAIT_FEEDBACK : SUPERCAP_READY;
-            state.online = feedback.online;
-            state.rx_count = feedback.rx_count;
-            state.enable_requested = requested;
-            state.enable_sent = queued && command.enable_dcdc;
-            state.chassis_power_w = feedback.data.chassis_power_w;
-            state.referee_power_w = feedback.data.referee_power_w;
-            state.chassis_power_limit_w = feedback.data.chassis_power_limit_w;
-            state.cap_energy_raw = feedback.data.cap_energy_raw;
-            state.status_code = feedback.data.status_code;
         }
         osDelay(SUPERCAP_TX_PERIOD_MS);
     }
@@ -73,8 +61,8 @@ bool supercapInit(void)
     config.offline_timeout_ms = SUPERCAP_FEEDBACK_TIMEOUT_MS;
     config.max_referee_power_w = SUPERCAP_MAX_REFEREE_POWER_W;
     config.max_buffer_j = SUPERCAP_MAX_BUFFER_J;
-    if (!capacitor.init(config)) { state.status = SUPERCAP_INIT_FAILED; return false; }
-    state.status = SUPERCAP_WAIT_REFEREE;
+    if (!capacitor.init(config)) { status = SUPERCAP_INIT_FAILED; return false; }
+    status = SUPERCAP_WAIT_REFEREE;
     initialized = true;
     return true;
 }
@@ -85,20 +73,22 @@ void supercapSetEnabled(bool enabled)
     enabled_request = enabled;
 }
 
-SupercapAppSnapshot supercapReadSnapshot(void)
+SupercapAppStatus supercapGetStatus(void)
 {
     IrqLock lock;
-    SupercapAppSnapshot result = state;
-    result.enable_requested = enabled_request;
-    result.online = capacitor.readSnapshot().online;
-    return result;
+    if (status == SUPERCAP_READY && !capacitor.data().online) { return SUPERCAP_WAIT_FEEDBACK; }
+    return status;
+}
+
+SupercapFeedback supercapGetFeedback(void)
+{
+    return capacitor.data();
 }
 
 bool supercapGetChassisPowerLimit(float* watts)
 {
     if (watts == nullptr) { return false; }
     *watts = 0.0f;
-    const auto snapshot = supercapReadSnapshot();
-    if (!snapshot.online || snapshot.status != SUPERCAP_READY) { return false; }
+    if (supercapGetStatus() != SUPERCAP_READY) { return false; }
     return capacitor.chassisPowerLimit(watts);
 }

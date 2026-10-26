@@ -202,9 +202,12 @@ bool LkMotor::sendCurrent(float current_a)
     return sendTorqueCurrent((int16_t)raw);
 }
 
-bool LkMotor::sendSpeed(float velocity_rad_s, int16_t current_limit)
+bool LkMotor::sendSpeed(float velocity_rad_s, float current_limit_a)
 {
-    const int16_t limit = clampIq(current_limit < 0 ? -(int32_t)current_limit : current_limit);
+    if (!isfinite(current_limit_a)) { return false; }
+    const float raw_limit = fminf(fabsf(current_limit_a) / current_per_lsb_, 2048.0f);
+    if (current_limit_a != 0.0f && raw_limit < 1.0f) { return false; }
+    const int16_t limit = (int16_t)raw_limit;
     const double raw_speed = (double)velocity_rad_s * (double)kRadToCentiDegree
                              * (double)reductionRatio() * direction();
     if (!isfinite(raw_speed) || raw_speed > INT32_MAX || raw_speed < INT32_MIN) { return false; }
@@ -221,18 +224,13 @@ bool LkMotor::sendSpeed(float velocity_rad_s, int16_t current_limit)
     return sendCommand(0xA2U, 2U, payload, 6U);
 }
 
-bool LkMotor::sendPosition(float angle_rad, uint16_t max_speed_dps)
+bool LkMotor::sendPosition(float angle_rad, float max_velocity_rad_s)
 {
-    double raw_angle = (double)angle_rad * (double)kRadToCentiDegree * (double)reductionRatio() * direction();
-    if (!isfinite(raw_angle)) { return false; }
-    if (raw_angle > 36000.0) { raw_angle = 36000.0; }
-    if (raw_angle < -36000.0) { raw_angle = -36000.0; }
-    int32_t angle = (int32_t)raw_angle;
-    if (angle > 36000) {
-        angle = 36000;
-    } else if (angle < -36000) {
-        angle = -36000;
-    }
+    if (!isfinite(max_velocity_rad_s) || max_velocity_rad_s < 0.0f) { return false; }
+    const double raw_angle = (double)angle_rad * (double)kRadToCentiDegree
+                             * (double)reductionRatio() * direction();
+    if (!isfinite(raw_angle) || raw_angle > INT32_MAX || raw_angle < INT32_MIN) { return false; }
+    const int32_t angle = (int32_t)raw_angle;
 
     uint8_t angle_bytes[4];
     angle_bytes[0] = (uint8_t)((uint32_t)angle);
@@ -240,14 +238,14 @@ bool LkMotor::sendPosition(float angle_rad, uint16_t max_speed_dps)
     angle_bytes[2] = (uint8_t)((uint32_t)angle >> 16);
     angle_bytes[3] = (uint8_t)((uint32_t)angle >> 24);
 
-    if (max_speed_dps == 0U) {
+    if (max_velocity_rad_s == 0.0f) {
         return sendCommand(0xA3U, 4U, angle_bytes, 4U);
     }
 
-    uint16_t speed = (uint16_t)fminf((float)max_speed_dps * reductionRatio(), 360.0f);
-    if (speed > 360U) {
-        speed = 360U;
-    }
+    const double speed_dps = (double)max_velocity_rad_s / (double)kDegToRad * (double)reductionRatio();
+    // 0xA4 的速度字段为 uint16_t，360 是单位示例，不是协议上限。
+    if (speed_dps < 1.0 || speed_dps > UINT16_MAX) { return false; }
+    const uint16_t speed = (uint16_t)speed_dps;
 
     uint8_t payload[6];
     payload[0] = (uint8_t)speed;

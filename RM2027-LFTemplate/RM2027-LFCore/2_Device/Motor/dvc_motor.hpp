@@ -35,16 +35,6 @@ private:
     uint32_t mask_;
 };
 
-template <typename Data>
-struct MotorSnapshot {
-    Data data;
-    uint32_t last_rx_tick;
-    uint32_t rx_count;
-    bool online;
-    bool fault_known;
-    bool fault;
-};
-
 /* Exported macros -----------------------------------------------------------*/
 
 /** @brief 默认电机离线判定时间，单位 ms */
@@ -146,7 +136,7 @@ public:
 
     /**
      * @brief 设置输出轴减速比
-     * @param ratio 例如 M3508 为 19，GM6020 为 1；仅初始化阶段设置；无效值返回 false 并保留原配置
+     * @param ratio 例如 M3508 P19 为 3591/187，GM6020 为 1；仅初始化阶段设置
      */
     bool setReductionRatio(float ratio)
     {
@@ -208,10 +198,6 @@ public:
 protected:
     ~MotorBase() = default;
 
-    /** @brief 未携带故障位的反馈不能用在线状态推断无故障。 */
-    virtual bool faultKnown() const { return false; }
-    virtual bool reportedFault() const { return false; }
-
     void configure(MotorType type, FDCAN_HandleTypeDef* bus, uint8_t id, uint32_t rx_identifier);
 
     /** @brief 更新最近一次反馈时刻 */
@@ -223,14 +209,6 @@ protected:
         last_rx_tick_ = 0U;
         rx_count_ = 0U;
         received_ = false;
-    }
-
-    template <typename Data>
-    MotorSnapshot<Data> snapshotOf(const Data& data) const
-    {
-        MotorCriticalSection lock;
-        return {data, last_rx_tick_, rx_count_, isOnline(HAL_GetTick()),
-                faultKnown(), reportedFault()};
     }
 
 private:

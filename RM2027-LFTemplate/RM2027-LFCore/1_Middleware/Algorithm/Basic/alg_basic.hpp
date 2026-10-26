@@ -36,6 +36,29 @@ extern const float BASIC_MATH_CELSIUS_TO_KELVIN;
 
 namespace basic_math {
 
+enum class QuadraticStatus : uint8_t {
+    InvalidInput,   /*!< 系数含 NaN 或无穷大 */
+    NoRealRoots,    /*!< 无实根，包括非零常数方程 */
+    OneRealRoot,   /*!< 重根或退化为一次方程 */
+    TwoRealRoots,  /*!< 两个实根 */
+    InfiniteRoots, /*!< 恒等式 0 = 0 */
+    NumericalError /*!< 归一化丢失非零系数或根超出 float 可表示范围 */
+};
+
+struct QuadraticResult {
+    QuadraticStatus status;
+    float lower; /*!< 较小实根；单根时 lower == upper */
+    float upper; /*!< 较大实根 */
+};
+
+/**
+ * @brief 求 a*x^2 + b*x + c = 0 的实根，使用系数归一化和稳定 q 公式。
+ * @note 仅 a == 0 时按一次/常数方程处理，不以固定 epsilon 判零。
+ *       仅 OneRealRoot / TwoRealRoots 状态下 lower、upper 有效且有限，
+ *       其余状态两者均为 0。区间筛选及业务选根由调用方负责。
+ */
+QuadraticResult solveQuadratic(float a, float b, float c);
+
 float inverseSqrt(float value);
 
 void booleanLogicalNot(bool* value);

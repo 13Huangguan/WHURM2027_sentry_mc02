@@ -32,7 +32,7 @@
 /* USER CODE BEGIN Includes */
 #include "bsp_can.h"
 #include "dvc_bsp.h"
-#include "app_chassis.h"
+//#include "app_chassis.h"
 #include "remote_control.h"
 /* USER CODE END Includes */
 
@@ -140,7 +140,7 @@ int main(void)
   /* 启动三路 FDCAN；底盘/云台/发射模块随后自行注册电机 */
   bspFdcanInit();
 
-  Chassis_Init();
+  //Chassis_Init();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */

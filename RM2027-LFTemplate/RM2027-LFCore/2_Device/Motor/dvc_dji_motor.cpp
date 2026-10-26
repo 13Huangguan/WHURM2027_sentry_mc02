@@ -20,15 +20,17 @@ namespace {
 
 /** @brief rpm -> rad/s，即 2*pi/60 */
 constexpr float kRpmToRadPerSecond = 0.1047197551f;
+constexpr float kPi = 3.14159265358979323846f;
+constexpr float kTwoPi = 2.0f * kPi;
 
-/** @brief 把角度折算到 -180~180 度 */
-float wrap180(float angle)
+/** @brief 把弧度折算到 -pi~pi */
+float wrapPi(float angle)
 {
-    while (angle > 180.0f) {
-        angle -= 360.0f;
+    while (angle > kPi) {
+        angle -= kTwoPi;
     }
-    while (angle < -180.0f) {
-        angle += 360.0f;
+    while (angle < -kPi) {
+        angle += kTwoPi;
     }
     return angle;
 }
@@ -38,7 +40,7 @@ float defaultReductionRatio(MotorType type)
 {
     switch (type) {
         case MotorType::DjiM3508:
-            return 19.0f;
+            return DJI_M3508_DEFAULT_REDUCTION_RATIO;
         case MotorType::DjiM2006:
             return 36.0f;
         case MotorType::DjiGm6020:
@@ -52,7 +54,8 @@ float defaultReductionRatio(MotorType type)
 
 /* DjiMotor ------------------------------------------------------------------*/
 
-DjiMotor::DjiMotor() : MotorBase(MotorType::Unknown, nullptr, 0U, 0U), command_(0)
+DjiMotor::DjiMotor()
+    : MotorBase(MotorType::Unknown, nullptr, 0U, 0U), command_(0), feedback_current_a_per_lsb_(0.001f)
 {
 }
 
@@ -61,10 +64,13 @@ bool DjiMotor::init(
     uint8_t id,
     FDCAN_HandleTypeDef* bus,
     int8_t direction,
-    float reduction_ratio
+    float reduction_ratio,
+    float feedback_current_a_per_lsb
 )
 {
     if (isRegistered() || bus == nullptr || !isfinite(reduction_ratio)
+        || !isfinite(feedback_current_a_per_lsb) || feedback_current_a_per_lsb <= 0.0f
+        || feedback_current_a_per_lsb > 1.0f
         || (reduction_ratio != 0.0f
             && (reduction_ratio < 1.0e-6f || reduction_ratio > 1.0e6f))) {
         return false;
@@ -96,6 +102,7 @@ bool DjiMotor::init(
     configure(type, bus, id, rx_identifier);
     setDirection(direction);
     setReductionRatio((reduction_ratio > 0.0f) ? reduction_ratio : defaultReductionRatio(type));
+    feedback_current_a_per_lsb_ = feedback_current_a_per_lsb;
     reset();
 
     return true;
@@ -129,16 +136,19 @@ bool DjiMotor::update(uint32_t identifier, const uint8_t* data, uint8_t length)
         }
 
         data_.last_encoder = encoder;
-        data_.total_angle_deg += (float)delta * 360.0f
+        data_.total_angle_rad += (float)delta * kTwoPi
                                  / ((float)kDjiEncoderRange * reductionRatio())
                                  * (float)direction();
-        data_.angle_deg = wrap180(data_.total_angle_deg);
+        data_.angle_rad = wrapPi(data_.total_angle_rad);
     }
 
     data_.encoder = encoder;
     data_.velocity_rpm = velocity_rpm;
     data_.current_raw = current_raw;
-    data_.temperature = data[6];
+    data_.current_a = (float)current_raw * feedback_current_a_per_lsb_ * (float)direction();
+    data_.temperature_valid = type() != MotorType::DjiM2006;
+    data_.temperature = data_.temperature_valid ? data[6] : 0U;
+    data_.error_code = type() == MotorType::DjiGm6020 ? 0U : data[7];
     data_.velocity_rad_s =
         (float)velocity_rpm * kRpmToRadPerSecond / reductionRatio() * (float)direction();
 
@@ -185,15 +195,15 @@ void DjiMotor::setCommand(int16_t value)
 
     switch (type()) {
         case MotorType::DjiGm6020:
-            limit = 30000;
+            limit = DJI_GM6020_MAX_COMMAND;
             break;
 
         case MotorType::DjiM3508:
-            limit = 16384;
+            limit = DJI_M3508_MAX_COMMAND;
             break;
 
         case MotorType::DjiM2006:
-            limit = 10000;
+            limit = DJI_M2006_MAX_COMMAND;
             break;
 
         default:
