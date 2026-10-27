@@ -30,6 +30,7 @@
 #include "gpio.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "bsp_can.h"
 #include "dvc_bsp.h"
 #include "app_chassis.h"
 #include "remote_control.h"
@@ -133,7 +134,12 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   bspInit();
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
   remoteControlInit();
+
+  /* 启动三路 FDCAN；底盘/云台/发射模块随后自行注册电机 */
+  bspFdcanInit();
+
   Chassis_Init();
   /* USER CODE END 2 */
 

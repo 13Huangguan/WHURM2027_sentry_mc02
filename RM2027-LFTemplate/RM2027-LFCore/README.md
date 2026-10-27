@@ -33,6 +33,112 @@ LFCore 内的 8 个 C 源文件已经迁移到 C++，生成的 HAL、USB 和 RTO
 迁移前的构建目录中可能留有指向 `.c` 的依赖文件，首次在其他工作副本中构建时请先清理旧产物，
 或使用独立构建目录：在 `RM2027-LFTemplate` 下执行 `make BUILD_DIR=build/cpp_migration -j4`。
 
+## CAN 电机通用模板
+
+完整接口约定、方向与减速比、快照、故障状态及 CAN 恢复流程见
+[电机与 CAN 使用说明](2_Device/Motor/MOTOR_USAGE.md)。
+
+模板不包含 `app_motor` 应用层和独立电机任务。底盘、云台、发射等应用在自己的模块中
+创建/注册电机，并在自己的控制周期里调用发送函数。
+
+| 文件 | 职责 |
+| --- | --- |
+| `dvc_motor.hpp/.cpp` | `MotorBase` 公共接口、静态注册、CAN 接收分发 |
+| `dvc_dji_motor.hpp/.cpp` | DJI GM6020 / M3508 / M2006 的解析与统一发送 |
+| `dvc_dm_motor.hpp/.cpp` | 达妙 MIT / 位置速度 / 速度控制 |
+| `dvc_lk_motor.hpp/.cpp` | 瓴控 MF / MG 的使能、电流、速度、位置控制 |
+
+### 注册电机
+
+```cpp
+#include "dvc_dji_motor.hpp"
+
+static DjiMotor motor;
+
+// 初始化阶段
+motor.init(MotorType::DjiM3508, 1U, &hfdcan1, 1, 0.0f);
+MotorBase::registerMotor(motor);   // 注册后才能接收反馈
+
+// 控制周期
+motor.setCommand(5000);
+DjiMotor::sendGroup(&hfdcan1, 0x200);
+```
+
+`MotorBase::onCanFrame()` 已由 `dvc_motor.cpp` 里的 `bspFdcanRxHandler()` 接好，
+应用层不需要再写接收分发。在线状态用 `motor.isOnline()` / `motor.lastRxTick()`。
+
+### DJI 标识符
+
+由类型和拨码 ID 推导，不需要手写：
+
+| 类型 | 接收标识符 | 发送标识符（ID 1~4 / 5~8） |
+| --- | --- | --- |
+| GM6020 | `0x205 + ID - 1` | `0x1FF / 0x2FF` |
+| M3508、M2006 | `0x201 + ID - 1` | `0x200 / 0x1FF` |
+
+`DjiMotor::sendGroup(bus, identifier)` 一次只发一个控制帧：
+从注册表汇总同一路总线上 `txIdentifier() == identifier` 的全部 DJI 电机，按 `txSlot()` 放进 0~3 槽。
+不同任务可以各自负责自己的 `0x200` / `0x1FF` / `0x2FF`，互不影响。
+
+如果已经自己排好 4 台电机的控制量，可以直接调用静态的
+`DjiMotor::sendFrame(bus, identifier, current[4])` 发一帧，不经过电机对象。
+
+### 瓴控电机（LK / MF / MG）
+
+`LkMotor` 支持使能/失能/停止、电流、速度、位置控制，并解析驱动器自动上报的
+`0x9C` 状态帧。
+
+- 命令和反馈标识符：`0x140 + ID`（ID 1~32）。
+- 编码器位数按型号传 14/15/16，默认 16。
+- 电流比例：MF 为 `33/4096 A/LSB`，MG 为 `66/4096 A/LSB`，
+  通过 `init()` 的 `mg_current` 选择。
+- 速度/位置内部按协议换算为 `0.01 dps/LSB` 和 `0.01 deg/LSB`。
+- 当前板级 FDCAN 为 **1 Mbps**（PLL2Q = 100 MHz，预分频 5 / 20 tq），
+  LK 驱动器需要用 LK 上位机设置为相同的 1 Mbps。
+
+```cpp
+#include "dvc_lk_motor.hpp"
+
+static LkMotor dial_motor;
+
+// 初始化：ID1，FDCAN1，16 位编码器，MF 系列
+dial_motor.init(1U, &hfdcan1, 16U, false);
+MotorBase::registerMotor(dial_motor);
+
+// 使能并速度控制
+dial_motor.sendEnable();
+dial_motor.sendSpeed(20.0f);          // 20 rad/s，输出轴
+
+// 或位置控制：目标 1.57 rad，最大 3.14 rad/s（约 180 deg/s）
+dial_motor.sendPosition(1.57f, 3.141592654f);
+
+// 反馈
+const auto fdb = dial_motor.data();
+const bool online = dial_motor.isOnline();
+// fdb.angle_rad / fdb.velocity_rad_s / fdb.current_a / fdb.temperature
+```
+
+`sendSpeed()` 的第二个参数是最大转矩电流幅值（A），MF 上限 16.5 A、MG 上限 33 A。
+0 原样发送编码 0，其具体行为需核实驱动固件。`sendPosition()` 接收多圈 rad 目标及 rad/s 速度上限。
+驱动器不主动上报时可以周期调用 `dial_motor.sendReadStatus()`。
+
+测试模块：`4_Application/Motor/app_lk_test.cpp` 默认输出 0.5 Hz、幅值 3 rad/s 的
+周期正弦速度，持续 10 秒。模板默认不在 `main.c` 中调用 `lkTestInit()`，需要测试时手动启用；目标速度和反馈可在
+`g_lk_test_feedback` 中观察。测试参数在该文件顶部修改。
+
+其他 CAN 设备可直接调用 `bspFdcanSend()`。新增厂商电机时继承 `MotorBase`，
+实现 `update()`/`reset()` 后调用 `MotorBase::registerMotor()`。
+
+## 超级电容
+
+新增设备驱动 `2_Device/Supercap` 与周期应用 `4_Application/Supercap`，按提供的 `superpower_task` 和文档移植 `0x61` 协议。线程在 `Core/Src/freertos.c` 中定义和创建。
+默认 CAN1，反馈 ID 待填写宏，未配置时不启动任务。
+接入说明、数据过滤及底盘预算接口见 [超级电容说明](4_Application/Supercap/README.md)。
+
+## 2006 SMC 在线调参
+
+调参模块、上位机工具和实测记录见独立文档 [SMC_TUNING.md](4_Application/Motor/SMC_TUNING.md)。
+
 ## 矩阵与滤波
 
 `1_Middleware/Algorithm/Matrix/mat_matrix.hpp/.cpp` 改编自

@@ -11,12 +11,6 @@ extern "C" {
 void Chassis_Init(void);
 void Chassis_Control(void);
 
-void Chassis_MotorRxHandler(
-    FDCAN_HandleTypeDef *hcan,
-    uint32_t identifier,
-    const uint8_t *data
-);
-
 #ifdef __cplusplus
 }
 #endif

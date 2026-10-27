@@ -6,7 +6,7 @@
 #include "bsp_can.h"
 #include "cmsis_os.h"
 #include "fdcan.h"
-#include "dvc_motor.hpp"
+#include "dvc_dji_motor.hpp"
 #include "lf_core.hpp"
 #include "remote_control.h"
 
@@ -20,7 +20,6 @@ constexpr uint8_t kWheelMotorId[kWheelCount] = {2U, 3U, 4U, 1U};
 constexpr int8_t kWheelDirection[kWheelCount] = {1, 1, -1, -1};
 
 constexpr uint32_t kChassisTxId = 0x200U;
-constexpr uint32_t kChassisRxBaseId = 0x201U;
 constexpr uint32_t kOfflineTimeoutMs = 10U;
 
 // 参考26哨兵旧底盘参数。
@@ -50,14 +49,11 @@ constexpr float kRcWzSign = -1.0f;
 
 constexpr float kVelocityFilterAlpha = 0.75f;
 
-DJI_Motor_Info_Class g_wheelMotor[kWheelCount];
+DjiMotor g_wheelMotor[kWheelCount];
 ForceSolver g_chassisForce;
 PID g_vxPid;
 PID g_vyPid;
 PID g_wzPid;
-
-FdcanTxFrame g_chassisTxFrame;
-uint32_t g_lastRxTick[kWheelCount] = {0U, 0U, 0U, 0U};
 
 float g_vxFiltered = 0.0f;
 float g_vyFiltered = 0.0f;
@@ -76,12 +72,6 @@ float ApplyDeadzone(float value) {
     return (basic_math::abs(value) < kRcDeadzone) ? 0.0f : value;
 }
 
-float MotorRpmToWheelOmega(int16_t rpm, int8_t direction) {
-    const float outputOmega =
-        (float)rpm * BASIC_MATH_RPM_TO_RADPS / kWheelGearRatio;
-    return outputOmega * (float)direction;
-}
-
 void ResetVelocityPids(void) {
     g_vxPid.setIntegralError(0.0f);
     g_vyPid.setIntegralError(0.0f);
@@ -92,26 +82,25 @@ bool AllWheelsOnline(void) {
     const uint32_t now = HAL_GetTick();
 
     for (uint8_t i = 0U; i < kWheelCount; ++i) {
-        if (!g_wheelMotor[i].isInitialized()) {
-            return false;
-        }
-        if ((now - g_lastRxTick[i]) > kOfflineTimeoutMs) {
+        if (!g_wheelMotor[i].isOnline(now)) {
             return false;
         }
     }
     return true;
 }
 
-void SendCurrentCommand(const int16_t command[kWheelCount]) {
-    DJI_Motor_Info_Class::sendCurrent(
-        &g_chassisTxFrame,
-        kChassisTxId,
-        command
-    );
+void SendCurrentCommand(const float command[kWheelCount]) {
+    for (uint8_t i = 0U; i < kWheelCount; ++i) {
+        float raw = command[i];
+        raw = basic_math::constrain(raw, -16384.0f, 16384.0f);
+        g_wheelMotor[i].setCommand(static_cast<int16_t>(raw));
+    }
+
+    (void)DjiMotor::sendGroup(&hfdcan1, kChassisTxId);
 }
 
 void SendZeroCurrent(void) {
-    const int16_t zero[kWheelCount] = {0, 0, 0, 0};
+    const float zero[kWheelCount] = {0.0f, 0.0f, 0.0f, 0.0f};
     SendCurrentCommand(zero);
 }
 
@@ -156,25 +145,27 @@ void EstimateBodyVelocity(
 }  // namespace
 
 void Chassis_Init(void) {
-    bspFdcanInit();
-    bspFdcanInitTxFrame(&g_chassisTxFrame, &hfdcan1);
-
     ForceActuatorParam params[kWheelCount] = {};
 
     for (uint8_t i = 0U; i < kWheelCount; ++i) {
         const uint32_t motorId = kWheelMotorId[i];
 
-        g_wheelMotor[i].motorInit(
-            DJI_M3508,
-            kChassisTxId,
-            kChassisRxBaseId + motorId - 1U
-        );
-
-        g_lastRxTick[i] = 0U;
+        if (!g_wheelMotor[i].init(
+                MotorType::DjiM3508,
+                static_cast<uint8_t>(motorId),
+                &hfdcan1,
+                kWheelDirection[i],
+                kWheelGearRatio
+            ) ||
+            !MotorBase::registerMotor(g_wheelMotor[i])) {
+            Error_Handler();
+        }
+        g_wheelMotor[i].setOfflineTimeout(kOfflineTimeoutMs);
 
         params[i].torque_constant = kWheelTorquePerAmp;
         params[i].reduction_ratio = 1.0f;
-        params[i].direction = kWheelDirection[i];
+        // 电机方向由 DjiMotor 统一处理，力控输出使用机构输出轴坐标。
+        params[i].direction = 1;
         params[i].torque_max = kWheelTorqueMax;
 
         // 调试阶段先关闭模型补偿。
@@ -225,47 +216,11 @@ void Chassis_Init(void) {
     SendZeroCurrent();
 }
 
-void Chassis_MotorRxHandler(
-    FDCAN_HandleTypeDef *hcan,
-    uint32_t identifier,
-    const uint8_t *data
-) {
-    if ((hcan != &hfdcan1) || (data == nullptr)) {
-        return;
-    }
-
-    for (uint8_t i = 0U; i < kWheelCount; ++i) {
-        const uint32_t rxId =
-            kChassisRxBaseId + kWheelMotorId[i] - 1U;
-
-        if (identifier == rxId) {
-            g_wheelMotor[i].motorUpdate(identifier, data);
-            g_lastRxTick[i] = HAL_GetTick();
-            return;
-        }
-    }
-}
-
-/**
- * @brief 将 FDCAN 接收中断分发到底盘轮电机。
- * @note 该入口原先位于已删除的云台 Pitch 测试应用中。
- */
-extern "C" void bspFdcanRxHandler(
-    FDCAN_HandleTypeDef *hcan,
-    uint32_t identifier,
-    uint8_t *data
-) {
-    Chassis_MotorRxHandler(hcan, identifier, data);
-}
-
 void Chassis_Control(void) {
     float wheelOmega[kWheelCount];
 
     for (uint8_t i = 0U; i < kWheelCount; ++i) {
-        wheelOmega[i] = MotorRpmToWheelOmega(
-            g_wheelMotor[i].getData().Velocity,
-            kWheelDirection[i]
-        );
+        wheelOmega[i] = g_wheelMotor[i].data().velocity_rad_s;
     }
 
     float vxRaw = 0.0f;
@@ -334,16 +289,13 @@ void Chassis_Control(void) {
     g_chassisForce.setEnable(true);
     g_chassisForce.timCalculatePeriodElapsedCallback();
 
-    int16_t currentCommand[kWheelCount] = {0, 0, 0, 0};
     constexpr float currentToCommand =
         16384.0f / kC620MaxCurrent;
+    float currentCommand[kWheelCount] = {0.0f, 0.0f, 0.0f, 0.0f};
 
     for (uint8_t i = 0U; i < kWheelCount; ++i) {
-        float raw = g_chassisForce.getOut(i) * currentToCommand;
-        raw = basic_math::constrain(raw, -16384.0f, 16384.0f);
-
-        // sendCurrent() 的数据按 CAN 槽位 ID1~ID4 排列。
-        currentCommand[kWheelMotorId[i] - 1U] = (int16_t)raw;
+        currentCommand[i] =
+            g_chassisForce.getOut(i) * currentToCommand;
     }
 
     SendCurrentCommand(currentCommand);

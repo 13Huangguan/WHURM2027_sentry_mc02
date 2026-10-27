@@ -1,378 +1,183 @@
 /**
- * @file Motor.cpp
- * @author 
- * @brief 电机设备驱动实现（C++ 版本）
- * @version 1.0
- * @date 2026/10/04
+ * @file dvc_motor.cpp
+ * @author LuojiaFox
+ * @brief 电机公共基类与 CAN 接收分发实现
+ * @version 3.0
+ * @date 2026-10-20
  *
- * @attention 由 COD/Components/Device/Src/Motor.c 转换而来。
+ * @copyright WHU-LuojiaFox (c) 2026
  */
 
 /* Includes ------------------------------------------------------------------*/
 
 #include "dvc_motor.hpp"
 
-#include "alg_basic.hpp"
+#include <stddef.h>
 
-#include <math.h>
+/* MotorBase static registry --------------------------------------------------*/
 
-/* Private constants ---------------------------------------------------------*/
+constexpr uint8_t MotorBase::kMaxMotors;
 
-namespace {
+MotorBase* MotorBase::motors_[MotorBase::kMaxMotors] = {};
+volatile uint8_t MotorBase::motor_count_ = 0U;
 
-/* 弧度转角度，等价于原 COD Config.h 中的 RadiansToDegrees */
+/* MotorBase -----------------------------------------------------------------*/
 
-
-}  // namespace
-
-/* DJI 电机 ------------------------------------------------------------------*/
-
-/**
- * @brief 构造函数，所有成员清零
- */
-DJI_Motor_Info_Class::DJI_Motor_Info_Class()
-    : type(DJI_GM6020), canFrame{0U, 0U}, data{} {
+MotorBase::MotorBase(MotorType type, FDCAN_HandleTypeDef* bus, uint8_t id, uint32_t rx_identifier)
+    : type_(type),
+      bus_(bus),
+      id_(id),
+      rx_identifier_(rx_identifier),
+      direction_(1),
+      reduction_ratio_(1.0f),
+      last_rx_tick_(0),
+      rx_count_(0),
+      offline_timeout_ms_(kDefaultMotorOfflineTimeoutMs)
+{
 }
 
-/**
- * @brief 配置电机类型与 CAN 收发标识符
- */
-void DJI_Motor_Info_Class::motorInit(DJI_Motor_Type_e motorType, uint32_t txIdentifier,
-                                      uint32_t rxIdentifier) {
-    this->type = motorType;
-    canFrame.TxIdentifier = txIdentifier;
-    canFrame.RxIdentifier = rxIdentifier;
-    data = {};
+void MotorBase::configure(
+    MotorType type,
+    FDCAN_HandleTypeDef* bus,
+    uint8_t id,
+    uint32_t rx_identifier
+)
+{
+    type_ = type;
+    bus_ = bus;
+    id_ = id;
+    rx_identifier_ = rx_identifier;
 }
 
-/**
- * @brief 用一帧 CAN 数据刷新电机状态
- */
-void DJI_Motor_Info_Class::motorUpdate(uint32_t identifier, const uint8_t *rxBuffer) {
-    if (identifier != canFrame.RxIdentifier) {
+void MotorBase::refreshRxTick()
+{
+    received_ = true;
+    last_rx_tick_ = HAL_GetTick();
+    rx_count_++;
+}
+
+bool MotorBase::isOnline(uint32_t now_ms) const
+{
+    MotorCriticalSection lock;
+    if (!received_) {
+        return false;
+    }
+    return (now_ms - last_rx_tick_) <= offline_timeout_ms_;
+}
+
+bool MotorBase::isOnline() const
+{
+    MotorCriticalSection lock;
+    return isOnline(HAL_GetTick());
+}
+
+bool MotorBase::isRegistered() const
+{
+    for (uint8_t i = 0; i < motor_count_; ++i) {
+        if (motors_[i] == this) { return true; }
+    }
+    return false;
+}
+
+bool MotorBase::registerMotor(MotorBase& motor)
+{
+    MotorCriticalSection lock;
+    if (motor.bus() == nullptr || motor.id() == 0U || motor.type() == MotorType::Unknown
+        || motor.rxIdentifier() > 0x7FFU || motor.txIdentifier() > 0x7FFU) {
+        return false;
+    }
+    if (motor_count_ >= kMaxMotors) {
+        return false;
+    }
+
+    for (uint8_t i = 0U; i < motor_count_; i++) {
+        if (motors_[i] == &motor) {
+            return false;
+        }
+
+        /* 同一路 CAN 上不能有两台电机共用同一个反馈标识符 */
+        if ((motors_[i]->bus() == motor.bus())
+            && (motors_[i]->rxIdentifier() == motor.rxIdentifier()))
+        {
+            return false;
+        }
+
+        /* 同一路 CAN 的同一发送帧、同一槽位只能对应一台电机 */
+        if ((motor.txIdentifier() != 0U) && (motors_[i]->bus() == motor.bus())
+            && (motors_[i]->txIdentifier() == motor.txIdentifier())
+            && (!motor.sharesTxFrame() || !motors_[i]->sharesTxFrame()
+                || (motors_[i]->txSlot() == motor.txSlot())))
+        {
+            return false;
+        }
+
+        if (motors_[i]->bus() == motor.bus()
+            && ((motor.txIdentifier() != 0U && motor.txIdentifier() == motors_[i]->rxIdentifier())
+                || (motors_[i]->txIdentifier() != 0U
+                    && motors_[i]->txIdentifier() == motor.rxIdentifier()))) {
+            return false;
+        }
+    }
+
+    motors_[motor_count_] = &motor;
+    motor_count_++;
+
+    return true;
+}
+
+void MotorBase::onCanFrame(
+    FDCAN_HandleTypeDef* bus,
+    uint32_t identifier,
+    const uint8_t* data,
+    uint8_t length
+)
+{
+    if ((bus == nullptr) || (data == nullptr)) {
         return;
     }
 
-    data.Temperature = rxBuffer[6];
-    data.Encoder = (int16_t)((int16_t)rxBuffer[0] << 8 | (int16_t)rxBuffer[1]);
-    data.Velocity = (int16_t)((int16_t)rxBuffer[2] << 8 | (int16_t)rxBuffer[3]);
-    data.Current = (int16_t)((int16_t)rxBuffer[4] << 8 | (int16_t)rxBuffer[5]);
-
-    switch (type) {
-        case DJI_GM6020:
-            data.angle = djiMotorEncoderToAngle(1.f, 8192);
-            break;
-
-        case DJI_M3508:
-            data.angle = djiMotorEncoderToAngle(3591.f / 187.f, 8192);
-            break;
-
-        case DJI_M2006:
-            data.angle = djiMotorEncoderToAngle(36.f, 8192);
-            break;
-
-        default:
-            break;
+    for (uint8_t i = 0U; i < motor_count_; i++) {
+        MotorBase* motor = motors_[i];
+        if ((motor->bus() == bus) && (motor->rxIdentifier() == identifier)) {
+            (void)motor->update(identifier, data, length);
+            return;
+        }
     }
 }
 
-/**
- * @brief 把 4 台 DJI 电机的电流打包成一帧发送
- */
-void DJI_Motor_Info_Class::sendCurrent(FdcanTxFrame *txFrame, uint32_t identifier,
-                                       const int16_t current[4]) {
-    txFrame->header.Identifier = identifier;
-
-    for (uint8_t i = 0; i < 4; i++) {
-        txFrame->data[2 * i] = (uint8_t)(current[i] >> 8);
-        txFrame->data[2 * i + 1] = (uint8_t)(current[i]);
+MotorBase* MotorBase::motorAt(uint8_t index)
+{
+    if (index >= motor_count_) {
+        return nullptr;
     }
-
-    userFdcanAddMessageToTxFifoQ(txFrame);
+    return motors_[index];
 }
 
-bool DJI_Motor_Info_Class::isInitialized() const {
-    return data.Initlized;
+uint8_t MotorBase::motorCount()
+{
+    return motor_count_;
 }
 
-DJI_Motor_Type_e DJI_Motor_Info_Class::getType() const {
-    return type;
-}
-
-const Motor_CANFrameInfo_typedef &DJI_Motor_Info_Class::getCanFrame() const {
-    return canFrame;
-}
-
-const DJI_Motor_Data_Typedef &DJI_Motor_Info_Class::getData() const {
-    return data;
-}
-
-/**
- * @brief 把编码器值换算为累计角度，超过 180 度继续累加，torqueRatio：减速比；maxEncoder：电机编码器一圈的计数
- */
-float DJI_Motor_Info_Class::djiMotorEncoderToAnglesum(float torqueRatio, uint16_t maxEncoder) {
-    float res1 = 0, res2 = 0;
-
-    if (data.Initlized != true) {
-        data.Last_Encoder = data.Encoder;
-        data.angle = 0;
-        data.Initlized = true;
+bool MotorBase::allOnline(uint32_t now_ms)
+{
+    for (uint8_t i = 0U; i < motor_count_; i++) {
+        if (!motors_[i]->isOnline(now_ms)) {
+            return false;
+        }
     }
-
-    if (data.Encoder < data.Last_Encoder) {
-        res1 = data.Encoder - data.Last_Encoder + maxEncoder;
-    } else if (data.Encoder > data.Last_Encoder) {
-        res1 = data.Encoder - data.Last_Encoder - maxEncoder;
-    }
-    res2 = data.Encoder - data.Last_Encoder;
-
-    data.Last_Encoder = data.Encoder;
-
-    if (fabsf(res1) > fabsf(res2)) {
-        data.angle += (float)res2 / (maxEncoder * torqueRatio) * 360.f;
-    } else {
-        data.angle += (float)res1 / (maxEncoder * torqueRatio) * 360.f;
-    }
-
-    return data.angle;
+    return true;
 }
 
-/**
- * @brief 把编码器值换算为 -180~180 角度
- */
-float DJI_Motor_Info_Class::djiMotorEncoderToAngle(float torqueRatio, uint16_t maxEncoder) {
-    float encoderError = 0.f;
+/* CAN RX bridge -------------------------------------------------------------*/
 
-    if (data.Initlized != true) {
-        data.Last_Encoder = data.Encoder;
-        data.angle = data.Encoder / (maxEncoder * torqueRatio) * 360.f;
-        data.Initlized = true;
-    }
-
-    encoderError = data.Encoder - data.Last_Encoder;
-
-    if (encoderError > maxEncoder * 0.5f) {
-        data.angle += (float)(encoderError - maxEncoder) / (maxEncoder * torqueRatio) * 360.f;
-    } else if (encoderError < -maxEncoder * 0.5f) {
-        data.angle += (float)(encoderError + maxEncoder) / (maxEncoder * torqueRatio) * 360.f;
-    } else {
-        data.angle += (float)(encoderError) / (maxEncoder * torqueRatio) * 360.f;
-    }
-
-    data.Last_Encoder = data.Encoder;
-
-    data.angle = fLoopConstrain(data.angle, -180.f, 180.f);
-
-    return data.angle;
+extern "C" void bspFdcanRxHandler(
+    FDCAN_HandleTypeDef* hcan,
+    uint32_t identifier,
+    const uint8_t* data,
+    uint8_t length
+)
+{
+    MotorBase::onCanFrame(hcan, identifier, data, length);
 }
 
-/**
- * @brief 把角度循环限制到 [minValue, maxValue]
- */
-float DJI_Motor_Info_Class::fLoopConstrain(float input, float minValue, float maxValue) {
-    if (maxValue < minValue) {
-        return input;
-    }
-
-    float len = maxValue - minValue;
-
-    if (input > maxValue) {
-        do {
-            input -= len;
-        } while (input > maxValue);
-    } else if (input < minValue) {
-        do {
-            input += len;
-        } while (input < minValue);
-    }
-
-    return input;
-}
-
-/* 达妙电机 ------------------------------------------------------------------*/
-
-/**
- * @brief 构造函数，所有成员清零
- */
-DM_Motor_Info_Class::DM_Motor_Info_Class()
-    : controlMode(MIT), canFrame{0U, 0U}, paramRange{}, data{} {
-}
-
-/**
- * @brief 配置控制模式、参数范围与 CAN 收发标识符
- */
-void DM_Motor_Info_Class::init(DM_Motor_Control_Mode_Type_e mode,
-                               const DM_Motor_Param_Range_Typedef &range,
-                               uint32_t txIdentifier,
-                               uint32_t rxIdentifier) {
-    this->controlMode = mode;
-    this->paramRange = range;
-    canFrame.TxIdentifier = txIdentifier;
-    canFrame.RxIdentifier = rxIdentifier;
-    data = {};
-}
-
-/**
- * @brief 用一帧 CAN 数据刷新电机状态
- */
-void DM_Motor_Info_Class::dmMotorInfoUpdate(uint32_t identifier, const uint8_t *rxBuffer) {
-    if (identifier != canFrame.RxIdentifier) {
-        return;
-    }
-
-    data.State = rxBuffer[0] >> 4;
-    data.P_int = ((uint16_t)(rxBuffer[1]) << 8) | ((uint16_t)(rxBuffer[2]));
-    data.V_int = ((uint16_t)(rxBuffer[3]) << 4) | ((uint16_t)(rxBuffer[4]) >> 4);
-    data.T_int = ((uint16_t)(rxBuffer[4] & 0xF) << 8) | ((uint16_t)(rxBuffer[5]));
-
-    data.Torque = uintToFloat(data.T_int, -paramRange.T_MAX, paramRange.T_MAX, 12);
-    data.Position = uintToFloat(data.P_int, -paramRange.P_MAX, paramRange.P_MAX, 16);
-    data.Velocity = uintToFloat(data.V_int, -paramRange.V_MAX, paramRange.V_MAX, 12);
-    data.angle = data.Position * BASIC_MATH_RAD_TO_DEG;
-
-    data.Temperature_MOS = (float)(rxBuffer[6]);
-    data.Temperature_Rotor = (float)(rxBuffer[7]);
-}
-
-bool DM_Motor_Info_Class::isInitialized() const {
-    return data.Initlized;
-}
-
-DM_Motor_Control_Mode_Type_e DM_Motor_Info_Class::getControlMode() const {
-    return controlMode;
-}
-
-const Motor_CANFrameInfo_typedef &DM_Motor_Info_Class::getCanFrame() const {
-    return canFrame;
-}
-
-const DM_Motor_Param_Range_Typedef &DM_Motor_Info_Class::getParamRange() const {
-    return paramRange;
-}
-
-const DM_Motor_Data_Typedef &DM_Motor_Info_Class::getData() const {
-    return data;
-}
-
-/**
- * @brief 发送使能/失能/保存零点指令
- */
-void DM_Motor_Info_Class::dmMotorCommand(FdcanTxFrame *txFrame,
-                                           DM_Motor_CMD_Type_e command) {
-    txFrame->header.Identifier = canFrame.RxIdentifier;
-
-    txFrame->data[0] = 0xFF;
-    txFrame->data[1] = 0xFF;
-    txFrame->data[2] = 0xFF;
-    txFrame->data[3] = 0xFF;
-    txFrame->data[4] = 0xFF;
-    txFrame->data[5] = 0xFF;
-    txFrame->data[6] = 0xFF;
-
-    switch (command) {
-        case Motor_Enable:
-            txFrame->data[7] = 0xFC;
-            break;
-
-        case Motor_Disable:
-            txFrame->data[7] = 0xFD;
-            break;
-
-        case Motor_Save_Zero_Position:
-            txFrame->data[7] = 0xFE;
-            break;
-
-        default:
-            break;
-    }
-
-    userFdcanAddMessageToTxFifoQ(txFrame);
-}
-
-/**
- * @brief MIT 模式发送控制量
- */
-void DM_Motor_Info_Class::dmMotorMitSend(FdcanTxFrame *txFrame,
-                                            const DM_Motor_Contorl_Info_Typedef &control) {
-    uint16_t positionTmp = (uint16_t)floatToUint(control.Position, -paramRange.P_MAX, paramRange.P_MAX, 16);
-    uint16_t velocityTmp = (uint16_t)floatToUint(control.Velocity, -paramRange.V_MAX, paramRange.V_MAX, 12);
-    uint16_t torqueTmp = (uint16_t)floatToUint(control.Torque, -paramRange.T_MAX, paramRange.T_MAX, 12);
-    uint16_t kpTmp = (uint16_t)floatToUint(control.KP, 0, 500, 12);
-    uint16_t kdTmp = (uint16_t)floatToUint(control.KD, 0, 5, 12);
-
-    txFrame->header.Identifier = canFrame.TxIdentifier;
-
-    txFrame->data[0] = (uint8_t)(positionTmp >> 8);
-    txFrame->data[1] = (uint8_t)(positionTmp);
-    txFrame->data[2] = (uint8_t)(velocityTmp >> 4);
-    txFrame->data[3] = (uint8_t)((velocityTmp & 0x0F) << 4) | (uint8_t)(kpTmp >> 8);
-    txFrame->data[4] = (uint8_t)(kpTmp);
-    txFrame->data[5] = (uint8_t)(kdTmp >> 4);
-    txFrame->data[6] = (uint8_t)((kdTmp & 0x0F) << 4) | (uint8_t)(torqueTmp >> 8);
-    txFrame->data[7] = (uint8_t)(torqueTmp);
-
-    userFdcanAddMessageToTxFifoQ(txFrame);
-}
-
-/**
- * @brief 位置-速度模式发送控制量
- */
-void DM_Motor_Info_Class::dmMotorPositionVelocitySend(FdcanTxFrame *txFrame,
-                                                          float position,
-                                                          float velocity) {
-    const uint8_t *positionTmp = reinterpret_cast<const uint8_t *>(&position);
-    const uint8_t *velocityTmp = reinterpret_cast<const uint8_t *>(&velocity);
-
-    txFrame->header.Identifier = canFrame.TxIdentifier + 0x100;
-
-    txFrame->data[0] = positionTmp[0];
-    txFrame->data[1] = positionTmp[1];
-    txFrame->data[2] = positionTmp[2];
-    txFrame->data[3] = positionTmp[3];
-    txFrame->data[4] = velocityTmp[0];
-    txFrame->data[5] = velocityTmp[1];
-    txFrame->data[6] = velocityTmp[2];
-    txFrame->data[7] = velocityTmp[3];
-
-    userFdcanAddMessageToTxFifoQ(txFrame);
-}
-
-/**
- * @brief 速度模式发送控制量
- */
-void DM_Motor_Info_Class::dmMotorVelocitySend(FdcanTxFrame *txFrame, float velocity) {
-    const uint8_t *velocityTmp = reinterpret_cast<const uint8_t *>(&velocity);
-
-    txFrame->header.Identifier = canFrame.TxIdentifier + 0x200;
-
-    txFrame->data[0] = velocityTmp[0];
-    txFrame->data[1] = velocityTmp[1];
-    txFrame->data[2] = velocityTmp[2];
-    txFrame->data[3] = velocityTmp[3];
-    txFrame->data[4] = 0;
-    txFrame->data[5] = 0;
-    txFrame->data[6] = 0;
-    txFrame->data[7] = 0;
-
-    userFdcanAddMessageToTxFifoQ(txFrame);
-}
-
-/**
- * @brief 把原始整数还原为浮点量
- */
-float DM_Motor_Info_Class::uintToFloat(int xInt, float xMin, float xMax, int bits) {
-    float span = xMax - xMin;
-    float offset = xMin;
-
-    return ((float)xInt) * span / ((float)((1 << bits) - 1)) + offset;
-}
-
-/**
- * @brief 把浮点量映射为原始整数
- */
-int DM_Motor_Info_Class::floatToUint(float x, float xMin, float xMax, int bits) {
-    float span = xMax - xMin;
-    float offset = xMin;
-
-    return (int)((x - offset) * ((float)((1 << bits) - 1)) / span);
-}
+/************************ COPYRIGHT(C) WHU-LuojiaFox **************************/

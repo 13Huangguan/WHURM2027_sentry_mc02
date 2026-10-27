@@ -15,7 +15,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "app_ins.h"
 
-#include "detect.h"
+//#include "detect.h"
 
 #include "alg_basic.hpp"
 #include "alg_lpf.hpp"
@@ -44,9 +44,10 @@
 /* Heater ------------------------------------------------------------------- */
 /**
  * @brief 加热目标温度（摄氏度）
+ * @note  同时作为暖机零偏标定的温度门槛
  */
 #ifndef BMI088_Target_Temperature
-#define BMI088_Target_Temperature 40.0f
+#define BMI088_Target_Temperature 35.0f
 #endif
 
 /**
@@ -64,41 +65,13 @@
 #endif
 
 /**
- * @brief 暖机零偏标定开关（当前关闭）
+ * @brief 暖机零偏标定开关
+ * @note  融合前这个值是 0，yaw 用的是 dvc_bmi088.cpp 里的实测零偏；
+ *        改成 1 会在温度稳定后重新标定并覆盖那组零偏
  */
 #ifndef BMI088_Warm_Calib_Enable
 #define BMI088_Warm_Calib_Enable 0
 #endif
-
-/* --- 加热保护阈值 --------------------------------------------------------- */
-/** 温度读数超出这个范围就认为传感器异常，立即断加热
- *  BMI088 量程 -40 ~ +125 ℃，取略窄一点的值 */
-#define HEATER_TEMP_VALID_MIN   (-40.0f)
-#define HEATER_TEMP_VALID_MAX   (125.0f)
-
-/** 过温保护：超过 OVER 立即断电，回落到 RESUME 以下才恢复（带回差防抖动） */
-#define HEATER_OVER_TEMP_C      (50.0f)
-#define HEATER_RESUME_TEMP_C    (43.0f)
-
-/** 满功率持续超过这个时间就判定为卡住（传感器脱落 / PID 失控），锁死断加热 */
-#define HEATER_FULL_POWER_RATIO (0.9f)
-#define HEATER_FULL_POWER_MS    (10000u)
-
-/** 满功率锁死后的解除条件：温度真的升到目标附近，说明传感器是活的 */
-#define HEATER_STALL_CLEAR_C    (BMI088_Target_Temperature - 1.0f)
-
-/**
- * @brief 加热器保护状态，便于在调试器里查看
- */
-typedef struct {
-    bool over_temp_latched;    /*!< 过温锁存 */
-    bool stall_latched;        /*!< 满功率超时锁存 */
-    bool sensor_invalid;       /*!< 上一拍温度读数非法 */
-    uint32_t full_power_since; /*!< 本轮满功率起始时刻，0 表示当前不满功率 */
-    uint32_t invalid_cnt;      /*!< 累计非法读数次数，便于排查 */
-} Bmi088HeaterGuard;
-
-Bmi088HeaterGuard bmi088_heater_guard;
 
 /* Globals ------------------------------------------------------------------*/
 /**
@@ -158,13 +131,6 @@ static void insTaskInit(void);
  */
 static void BMI088_Temp_Control(float temp);
 
-/**
- * @brief 立即关闭加热，用于各种保护分支
- */
-static inline void BMI088_Heater_Off(void) {
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
-}
-
 #if BMI088_Warm_Calib_Enable
 /**
  * @brief Drive the one-off warm gyro-bias calibration.
@@ -204,8 +170,8 @@ extern "C" void INS_Task(void const* argument) {
 
         /* Update the BMI088 measurement */
         bmi088InfoUpdate(&bmi088_info);
-        detect_hook(DETECT_BMI_GYRO);
-        detect_hook(DETECT_BMI_ACCEL);
+        //detect_hook(DETECT_BMI_GYRO);
+        //detect_hook(DETECT_BMI_ACCEL);
 
         /* Accel measurement LPF2p */
         ins_info.accel[0] = lowPassFilter2pUpdate(&ins_accel_pf2p[0], bmi088_info.accel[0]);
@@ -347,9 +313,8 @@ static void insTaskInit(void) {
         PidDFirstDisable
     );
 
-    /* 保护状态清零，并且上电先断加热 */
-    memset(&bmi088_heater_guard, 0, sizeof(bmi088_heater_guard));
-    BMI088_Heater_Off();
+    /* 上电先断加热 */
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
 
 #if INS_USE_MAHONY
     Mahony_Init(&Mahony_Info, ins_info.accel[0], ins_info.accel[1], ins_info.accel[2]);
@@ -370,76 +335,18 @@ static void insTaskInit(void) {
 /**
  * @brief Control the BMI088 temperature.
  * @param temp  measure of the BMI088 temperature.
- *
- * @note 除了正常 PID，还带三重保护，任何一条触发都会立刻把加热关掉：
- *       1. 读数非法（NaN / 超量程）—— 传感器掉了或是 I2C 读挂了
- *       2. 过温（>50℃）—— 锁存，直到回落到 43℃ 以下
- *       3. 满功率连续超过 10s —— 判定卡住（PID 失控或传感器一直读低温），
- *          锁存到温度真的升到目标附近才解除
  */
 static void BMI088_Temp_Control(float temp) {
-    const uint32_t now = HAL_GetTick();
-
-    /* --- 保护 1：读数合法性 ---------------------------------------------
-       NaN 的任何比较都是 false，所以 (> min && < max) 一并把 NaN 挡掉 */
-    if (!(temp > HEATER_TEMP_VALID_MIN && temp < HEATER_TEMP_VALID_MAX)) {
-        bmi088_heater_guard.sensor_invalid = true;
-        bmi088_heater_guard.invalid_cnt++;
-        bmi088_heater_guard.full_power_since = 0;
-        BMI088_Heater_Off();
-        return;
-    }
-    bmi088_heater_guard.sensor_invalid = false;
-
-    /* --- 保护 2：过温，带回差 ------------------------------------------- */
-    if (temp > HEATER_OVER_TEMP_C) {
-        bmi088_heater_guard.over_temp_latched = true;
-    }
-    if (bmi088_heater_guard.over_temp_latched) {
-        if (temp > HEATER_RESUME_TEMP_C) {
-            bmi088_heater_guard.full_power_since = 0;
-            BMI088_Heater_Off();
-            return;
-        }
-        bmi088_heater_guard.over_temp_latched = false; /* 已经降下来了 */
-    }
-
-    /* --- 保护 3：满功率超时锁存 ----------------------------------------- */
-    if (bmi088_heater_guard.stall_latched) {
-        /* 只有温度真的上来了才认为不是卡住，允许重新加热 */
-        if (temp < HEATER_STALL_CLEAR_C) {
-            bmi088_heater_guard.full_power_since = 0;
-            BMI088_Heater_Off();
-            return;
-        }
-        bmi088_heater_guard.stall_latched = false;
-    }
-
-    /* --- 正常 PID -------------------------------------------------------- */
     TempCtrl_PID.setTarget(BMI088_Target_Temperature);
     TempCtrl_PID.setNow(temp);
     TempCtrl_PID.timCalculatePeriodElapsedCallback();
 
     float output = TempCtrl_PID.getOut();
-    /* 用 constrain 而不是老的 VAL_LIMIT，那个宏在合并后的 alg_basic 里已经没了 */
     output = basic_math::constrain(output, 0.0f, BMI088_Heater_PWM_Max);
-
-    /* 满功率计时：连续 10s 顶格就锁死 */
-    if (output >= BMI088_Heater_PWM_Max * HEATER_FULL_POWER_RATIO) {
-        if (bmi088_heater_guard.full_power_since == 0) {
-            bmi088_heater_guard.full_power_since = now;
-        } else if ((now - bmi088_heater_guard.full_power_since) > HEATER_FULL_POWER_MS) {
-            bmi088_heater_guard.stall_latched = true;
-            bmi088_heater_guard.full_power_since = 0;
-            BMI088_Heater_Off();
-            return;
-        }
-    } else {
-        bmi088_heater_guard.full_power_since = 0;
-    }
 
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, (uint16_t)output);
 }
+
 //------------------------------------------------------------------------------
 /**
   * @brief  Drive the one-off warm gyro-bias calibration

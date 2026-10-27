@@ -410,6 +410,7 @@ typedef struct
     uint16_t crc;
 } __packed__ SendInitSpeed_s;
 
+
 /*-------------------- Receive --------------------*/
 typedef struct RobotCmdData
 {
@@ -469,12 +470,13 @@ typedef struct
     uint16_t crc;
 } __packed__ ReceiveDataVirtualRc_s;
 
-typedef struct 
+typedef struct
 {
     FrameHeader_t frame_header;  // 数据段id = 0x04
     uint32_t time_stamp;
     uint32_t sentry_cmd;
     uint16_t crc;
 } __packed__ ReceiveDataSentryCmd_s;
+
 
 #endif  // USB_TYPEDEF_H

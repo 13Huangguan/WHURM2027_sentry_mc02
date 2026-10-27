@@ -84,7 +84,7 @@ static constexpr uint8_t GYRO_REGISTER_CONFIGURATION[BMI088_WRITE_GYRO_REG_NUM][
 
     /* Data Transfer Rate and Bandwidth Settings */
     { BMI088_GYRO_BANDWIDTH,
-      (BMI088_GYRO_2000_230_HZ | BMI088_GYRO_BANDWIDTH_MUST_SET),
+      (BMI088_GYRO_1000_116_HZ | BMI088_GYRO_BANDWIDTH_MUST_SET),
       BMI088_GYRO_BANDWIDTH_ERROR },
 
     /* Power Mode Selection Register */
@@ -212,8 +212,10 @@ static Bmi088Status bmi088GyroInit(void) {
     return BMI088_NO_ERROR;
 }
 
+/* 与 ins_config.hpp 保持一致：关闭开机 5s 静态标定，使用实测零偏。
+   注意 dvc_bmi088.cpp 不包含 ins_config.hpp，宏必须在这里给出默认值。 */
 #ifndef IMU_CALIBRATION_ENABLE
-    #define IMU_CALIBRATION_ENABLE 1U
+    #define IMU_CALIBRATION_ENABLE 0U
 #endif
 
 static void bmi088OffsetUpdate(Bmi088Info* info) {
@@ -255,10 +257,10 @@ static void bmi088OffsetUpdate(Bmi088Info* info) {
     info->offsets_gyro_z = valid_samples > 0 ? info->offsets_gyro_z / valid_samples : 0.0f;
 
 #else /* DISABLE the BMI088 Calibration */
-    /* store the previous offsets */
-    info->offsets_gyro_x = 0.00150990125;
-    info->offsets_gyro_y = 0.00120758242;
-    info->offsets_gyro_z = -0.00392505853;
+    /* 融合前实测的零偏，改板子或换 IMU 后必须重新标定 */
+    info->offsets_gyro_x = 0.00405759178f;
+    info->offsets_gyro_y = 0.000725232065f;
+    info->offsets_gyro_z = 0.00128263142f;
 #endif
 
     /* set the offset init flag */

@@ -131,6 +131,7 @@ public:
     /* 调试数据通道 */
     void ModifyDebugData(uint8_t index, float data, const char *name);
 
+
     /**
      * @brief 哨兵决策状态
      * @note  与通信无关，放在这里暂存，后续应独立成决策模块
@@ -177,6 +178,7 @@ private:
     ReceiveDataPidDebug_s receive_pid_debug;
     ReceiveDataVirtualRc_s receive_virtual_rc;
     ReceiveDataSentryCmd_s receive_sentry_cmd;
+
 
     /* 控制指令数据 */
     RobotCmdData_t robot_cmd;

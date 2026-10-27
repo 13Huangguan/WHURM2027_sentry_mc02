@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app_ins.h"
+#include "app_supercap.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,6 +51,9 @@ osThreadId insTaskHandle;
 uint32_t BoardLink_TaskBuffer[512];
 osStaticThreadDef_t BoardLink_TaskControlBlock;
 osThreadId BoardLink_TaskHandle;
+osThreadId superpower_handle;
+uint32_t SUPERPOWER_TaskBuffer[256];
+osStaticThreadDef_t SUPERPOWER_TaskControlBlock;
 /* USER CODE END Variables */
 osThreadId Start_INS_TaskHandle;
 uint32_t Start_INS_TaskBuffer[ 2048 ];
@@ -154,6 +158,15 @@ void MX_FREERTOS_Init(void) {
   Start_Shoot_TaskHandle = osThreadCreate(osThread(Start_Shoot_Task), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
+  /* 超电使用工程自身 CAN/裁判接口；反馈 ID 未配置时不创建任务。 */
+  if (supercapInit()) {
+    osThreadStaticDef(SUPERPOWER, superpower_task, osPriorityAboveNormal, 0, 256,
+                      SUPERPOWER_TaskBuffer, &SUPERPOWER_TaskControlBlock);
+    superpower_handle = osThreadCreate(osThread(SUPERPOWER), NULL);
+    if (superpower_handle == NULL) {
+      Error_Handler();
+    }
+  }
   /* 静态任务声明 */
   osThreadStaticDef(REFEREE, referee_task, osPriorityNormal, 0, 512, REFEREE_TaskBuffer, &REFEREE_TaskControlBlock);
   referee_usart_task_handle = osThreadCreate(osThread(REFEREE), NULL);

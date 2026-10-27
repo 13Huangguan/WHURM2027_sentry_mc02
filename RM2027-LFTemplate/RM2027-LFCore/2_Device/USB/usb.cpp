@@ -257,7 +257,8 @@ void Usb::Init(void)
     append_CRC8_check_sum(  // 添加帧头 CRC8 校验位
         (uint8_t *)(&send_init_speed.frame_header),
         sizeof(send_init_speed.frame_header));
-}   
+
+}
 
 /**
  * @brief      用USB发送数据
@@ -298,6 +299,7 @@ void Usb::SendAll(void)
     CheckDurationAndSend(MapCommand);
 
     CheckDurationAndSend(InitSpeed);
+
 }
 
 /**
@@ -663,6 +665,7 @@ void Usb::SendInitSpeed(void)
     USB_Transmit((uint8_t *)&send_init_speed, sizeof(SendInitSpeed_s));
 }
 
+
 /*******************************************************************************/
 /* Receive Function                                                            */
 /*******************************************************************************/
@@ -724,6 +727,8 @@ uint32_t Usb::GetSentryCmd(void)
 /*******************************************************************************/
 /* Public Function                                                             */
 /*******************************************************************************/
+
+
 
 /**
  * @brief 修改调试数据包
