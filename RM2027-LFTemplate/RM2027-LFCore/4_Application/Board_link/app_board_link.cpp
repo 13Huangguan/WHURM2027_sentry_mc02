@@ -227,7 +227,8 @@ void publishGimbalRemoteState(
         0.0f,
         0.0f,
         0U,
-        0U
+        0U,
+        now_ms
     });
 
     taskENTER_CRITICAL();

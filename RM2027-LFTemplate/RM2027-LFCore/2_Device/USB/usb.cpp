@@ -111,6 +111,7 @@ void Usb::Init(void)
     memset(&receive_virtual_rc, 0, sizeof(ReceiveDataVirtualRc_s));
     memset(&robot_cmd, 0, sizeof(RobotCmdData_t));
     memset(&virtual_rc, 0, sizeof(RcControl));
+    robot_cmd_receive_time = 0;
 
     /*******************************************************************************/
     /* Serial                                                                     */
@@ -339,6 +340,7 @@ void Usb::Receive(void)
                 switch (data_id) {
                     case ROBOT_CMD_DATA_RECEIVE_ID: {
                         memcpy(&receive_robot_cmd, sof_address, sizeof(ReceiveDataRobotCmd_s));
+                        robot_cmd_receive_time = HAL_GetTick();
                     } break;
                     case PID_DEBUG_DATA_RECEIVE_ID: {
                         memcpy(&receive_pid_debug, sof_address, sizeof(ReceiveDataPidDebug_s));
@@ -672,7 +674,7 @@ void Usb::SendInitSpeed(void)
 
 void Usb::UpdateRobotCmd(void)
 {
-    LuojiaFox::RobotCmdState cmd;
+    LuojiaFox::RobotCmdState cmd {};
 
     robot_cmd.speed_vector.vx = receive_robot_cmd.data.speed_vector.vx;
     robot_cmd.speed_vector.vy = receive_robot_cmd.data.speed_vector.vy;
@@ -703,6 +705,7 @@ void Usb::UpdateRobotCmd(void)
 
     cmd.fire = robot_cmd.shoot.fire;
     cmd.fric_on = robot_cmd.shoot.fric_on;
+    cmd.last_update_ms = robot_cmd_receive_time;
 
     LuojiaFox::system_state.updateRobotCmd(cmd);
 }

@@ -34,6 +34,10 @@ struct ImuState
     float yaw_rate_dps;
     float pitch_rate_dps;
     float roll_rate_dps;
+    float acceleration_x_mps2;
+    float acceleration_y_mps2;
+    bool acceleration_valid;
+    uint32_t last_update_ms;
 };
 
 struct ChassisState
@@ -77,6 +81,7 @@ struct RobotCmdState
     float gimbal_yaw;
     uint8_t fire;
     uint8_t fric_on;
+    uint32_t last_update_ms;
 };
 
 struct UsbLinkState
