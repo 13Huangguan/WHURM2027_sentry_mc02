@@ -14,6 +14,7 @@
 #include "chassis_controller.hpp"
 #include "chassis_power_manager.hpp"
 #include "cmsis_os.h"
+#include "dvc_buzzer.hpp"
 #include "lf_core.hpp"
 #include "main.h"
 #include "remote_control.h"
@@ -56,13 +57,28 @@ void Chassis_Control(void)
             rc_online,
             now_ms
         );
+    buzzer.update(now_ms);
     const chassis_app::ChassisFeedback feedback =
         chassis_app::g_chassisController.readFeedback(state.imu, now_ms);
     publishChassisVelocity(feedback);
 
     // 模式切换后的首周期先停车并清除积分，避免继承上一控制源的历史状态。
+    // 模式切换时通过蜂鸣器提示。
     if (selection.mode_changed) {
         chassis_app::g_chassisController.stop();
+        switch (selection.mode) {
+        case CHASSIS_MODE_DISABLED:
+            buzzer.playBeeps(1U);
+            break;
+        case CHASSIS_MODE_DIRECT_RC:
+            buzzer.playBeeps(2U);
+            break;
+        case CHASSIS_MODE_AUTO_VISION:
+            buzzer.playBeeps(3U);
+            break;
+        default:
+            break;
+        }
         return;
     }
 
