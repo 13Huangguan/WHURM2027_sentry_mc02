@@ -5,9 +5,9 @@
 
 /* MC02 onboard buzzer: PB15 / TIM12_CH2. */
 constexpr float BUZZER_MIN_FREQUENCY_HZ = 196.0f;
-constexpr float BUZZER_MAX_FREQUENCY_HZ = 3520.0f;
-constexpr float BUZZER_DEFAULT_FREQUENCY_HZ = 2000.0f;
-constexpr float BUZZER_DEFAULT_VOLUME = 0.5f;
+constexpr float BUZZER_MAX_FREQUENCY_HZ = 5000.0f;
+constexpr float BUZZER_DEFAULT_FREQUENCY_HZ = 4000.0f;
+constexpr float BUZZER_DEFAULT_VOLUME = 1.0f;
 constexpr uint32_t BUZZER_BEEP_ON_TIME_MS = 100U;
 constexpr uint32_t BUZZER_BEEP_OFF_TIME_MS = 100U;
 
