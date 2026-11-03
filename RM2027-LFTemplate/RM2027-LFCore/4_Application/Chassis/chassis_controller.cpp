@@ -21,7 +21,7 @@ namespace {
  * @brief 由有效轮速估计底盘旋转角速度。
  * @param[in] feedback 包含轮缘线速度和有效轮位图的反馈快照。
  * @return 底盘旋转角速度，单位 rad/s；无有效轮时返回 0。
- * @note 全向轮纯旋转时各轮轮缘线速度约为 -R*wz。
+ * @note 全向轮纯旋转时各轮轮缘切向速度约为 -D*wz。
  */
 float wheelAngularVelocity(
     const ChassisFeedback& feedback
@@ -39,8 +39,8 @@ float wheelAngularVelocity(
         return 0.0f;
     }
 
-    // 纯旋转时各轮轮缘线速度为 -R*wz。
-    return -sum / (static_cast<float>(count) * kWheelRadius);
+    // 纯旋转时各轮轮缘切向速度为 -D*wz，D 为轮心到车体中心的距离。
+    return -sum / (static_cast<float>(count) * kWheelCenterDistance);
 }
 
 } // namespace
@@ -75,8 +75,10 @@ bool ChassisController::init()
         params[i].gravity_offset = kForceGravityOffset;
     }
 
-    force_solver_.init(params, kWheelCount, kForceDof, kControlPeriodS);
-    force_solver_.setVelocityFilterAlpha(kForceVelocityFilterAlpha);
+    if (!force_solver_.init(params, kWheelCount, kForceDof, kControlPeriodS)
+        || !force_solver_.setVelocityFilterAlpha(kForceVelocityFilterAlpha)) {
+        return false;
+    }
 
     float distribution[kWheelCount * kForceDof] = {};
     force_ready_ = ForceSolver::buildOmniDistribution(
@@ -85,7 +87,7 @@ bool ChassisController::init()
         distribution
     );
     if (force_ready_) {
-        force_solver_.setDistribution(distribution);
+        force_ready_ = force_solver_.setDistribution(distribution);
     }
 
     motion_compensation::Config motion_config =
@@ -191,7 +193,7 @@ ChassisFeedback ChassisController::readFeedback(
     measurement.yaw_rate_rad_s =
         imu_fresh ? imu.yaw_rate_dps * BASIC_MATH_DEG_TO_RAD : 0.0f;
     measurement.yaw_rate_valid = imu_fresh;
-    measurement.wheel_radius_m = kWheelRadius;
+    measurement.wheel_center_distance_m = kWheelCenterDistance;
     measurement.acceleration_x_mps2 =
         imu_fresh ? imu.acceleration_x_mps2 : 0.0f;
     measurement.acceleration_y_mps2 =
@@ -330,8 +332,14 @@ bool ChassisController::calculate(
         basic_math::constrain(wz_pid_.getOut(), -kMaxMz, kMaxMz)
     };
 
-    force_solver_.setTarget(generalized_force);
-    force_solver_.setNow(nullptr, feedback.wheel_omega);
+    if (!force_solver_.setTarget(generalized_force)
+        || !force_solver_.setNow(nullptr, feedback.wheel_omega)) {
+        resetControlState();
+        for (uint8_t i = 0U; i < kWheelCount; ++i) {
+            current[i] = 0.0f;
+        }
+        return false;
+    }
     force_solver_.setEnable(true);
     force_solver_.timCalculatePeriodElapsedCallback();
 

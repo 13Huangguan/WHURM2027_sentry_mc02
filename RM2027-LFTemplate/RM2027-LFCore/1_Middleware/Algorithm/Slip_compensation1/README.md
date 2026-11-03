@@ -14,14 +14,14 @@
 - Yaw 角必须是期望/云台坐标系相对底盘坐标系的相对角，单位 `rad`。
 - 加速度必须已经转到**底盘平面坐标系**并去除重力，单位 `m/s²`。
 - `valid_wheel_mask` 只表示轮速是否可用于逆解，不表示轮地是否打滑。
-- 打滑检测还需要有效的 IMU 角速度、正数轮半径和至少三个有效轮速。
+- 打滑检测还需要有效的 IMU 角速度、正数轮心旋转半径和至少三个有效轮速。
 - 底盘使用融合后的 `vx/vy` 作为速度环反馈，并应用受限的旋转目标补偿。
 - IMU 加速度无效或融合尚未建立时，底盘自动退回轮速一阶低通。
 
 ## 使用示例
 
 ```cpp
-#include "alg_motion_compensation.hpp"
+#include "alg_slip_compensation1.hpp"
 
 static motion_compensation::OmniMotionCompensator compensator;
 
@@ -42,7 +42,7 @@ void Update1ms()
     measurement.yaw_rad = relative_yaw_rad;
     measurement.yaw_rate_rad_s = relative_yaw_rate_rad_s;
     measurement.yaw_rate_valid = imu_yaw_rate_valid;
-    measurement.wheel_radius_m = wheel_radius;
+    measurement.wheel_center_distance_m = wheel_center_distance;
     measurement.acceleration_x_mps2 = chassis_ax_mps2;
     measurement.acceleration_y_mps2 = chassis_ay_mps2;
     measurement.acceleration_valid = imu_acceleration_valid;
@@ -76,7 +76,7 @@ void Update1ms()
 ```text
 expected_i = row_x_i * predicted_vx
            + row_y_i * predicted_vy
-           - wheel_radius * yaw_rate
+           - wheel_center_distance * yaw_rate
 residual_i = wheel_linear_velocity_i - expected_i
 score_i = abs(residual_i) / max(abs(actual_i), abs(expected_i), min_speed)
 ```

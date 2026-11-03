@@ -4,7 +4,8 @@
  * @copyright WHU-LuojiaFox (c) 2026
  *
  * 该模块将上层给出的广义力目标分配到多个执行器，并叠加惯性、摩擦、
- * 前馈和重力补偿。所有位置、速度、力矩和机械参数均使用执行器输出轴坐标。
+ * 前馈和重力补偿。位置、速度、力矩和负载参数使用执行器输出轴坐标；
+ * torque_constant 的参考轴由调用方通过 reduction_ratio 明确。
  */
 
 #ifndef ALG_FORCE_HPP
@@ -20,11 +21,17 @@
 
 /**
  * @brief 单个执行器的机械与传动参数。
- * @note 所有机械量均位于执行器输出轴；参数由 ForceSolver::init() 复制保存。
+ * @note 参数由 ForceSolver::init() 校验并复制保存。
  */
 struct ForceActuatorParam {
-    float torque_constant;     /**< 输出轴力矩常数，N*m/A */
-    float reduction_ratio;     /**< 电机到执行器输出轴的减速比 */
+    /**
+     * @brief 力矩常数，N*m/A。
+     * @note 若该值定义在电机轴，reduction_ratio 填真实减速比；
+     *       若该值已经折算到输出轴，reduction_ratio 应填 1。
+     */
+    float torque_constant;
+    /** @brief 电机到输出轴的减速比；Kt 已折算到输出轴时填 1。 */
+    float reduction_ratio;
     int8_t direction;          /**< 输出轴方向，+1 或 -1 */
     float torque_max;          /**< 输出轴力矩绝对上限，N*m */
     float inertia;             /**< 执行器等效转动惯量，kg*m^2 */
@@ -53,11 +60,12 @@ public:
      * @param param 执行器参数数组，不能为空。
      * @param actuator_num 有效执行器数量，最大 ALG_FORCE_ACTUATOR_MAX。
      * @param dof_num 广义力自由度，范围 1~ALG_FORCE_DOF_MAX。
-     * @param dt 控制周期，s；非正数或非法值按 0.001 s 处理。
+     * @param dt 控制周期，s；必须为有限正数。
+     * @return 参数、执行器数量、自由度和控制周期均有效时返回 true。
      * @note 初始化会清空此前设置的目标、反馈和输出。
      *       分配矩阵未设置时，默认使用单位对角矩阵。
      */
-    void init(
+    bool init(
         const ForceActuatorParam* param,
         uint8_t actuator_num,
         uint8_t dof_num,
@@ -67,35 +75,40 @@ public:
     /**
      * @brief 设置执行器到广义力的分配矩阵。
      * @param matrix 按行优先排列的 actuator_num x dof_num 矩阵数据。
+     * @return 矩阵元素有限且行满秩时返回 true。
      * @note 求解器会复制矩阵，调用方无需保持 matrix 生命周期。
      */
-    void setDistribution(const float* matrix);
+    bool setDistribution(const float* matrix);
 
     /**
      * @brief 设置本周期期望的广义力目标。
      * @param generalized_force 长度为 dof_num 的目标数组。
+     * @return 所有元素均为有限值时返回 true。
      */
-    void setTarget(const float* generalized_force);
+    bool setTarget(const float* generalized_force);
 
     /**
      * @brief 更新执行器位置和速度反馈。
      * @param position 长度为 actuator_num 的位置数组，传 nullptr 时保持旧值。
      * @param velocity 长度为 actuator_num 的速度数组，传 nullptr 时保持旧值。
+     * @return 所有提供的元素均为有限值时返回 true。
      * @note 传入的速度会经过一阶低通滤波。
      */
-    void setNow(const float* position, const float* velocity);
+    bool setNow(const float* position, const float* velocity);
 
     /**
      * @brief 设置各执行器的附加前馈力矩。
      * @param torque 长度为 actuator_num 的前馈力矩数组，N*m。
+     * @return 所有元素均为有限值时返回 true。
      */
-    void setFeedforwardTorque(const float* torque);
+    bool setFeedforwardTorque(const float* torque);
 
     /**
      * @brief 设置速度一阶低通滤波系数。
      * @param alpha 范围 0~1；越大越平滑，较小值更跟随新反馈。
+     * @return alpha 为有限值时返回 true；否则保持原参数不变。
      */
-    void setVelocityFilterAlpha(float alpha);
+    bool setVelocityFilterAlpha(float alpha);
 
     /**
      * @brief 启用或停用求解器。
@@ -175,6 +188,26 @@ public:
         return index < this->dof_num ? this->target_generalized_force[index] : 0.0f;
     }
 
+    /**
+     * @brief 获取最近一次四轮共同力矩缩放系数。
+     * @return 1 表示未饱和；0~1 表示统一缩放；0 表示输入故障或无输出。
+     */
+    float getSaturationScale() const {
+        return this->saturation_scale;
+    }
+
+    /** @brief 查询最近一次计算是否因力矩上限进行了缩放。 */
+    bool isSaturated() const {
+        return this->saturation_scale > 0.0f
+            && this->saturation_scale < 1.0f;
+    }
+
+    /** @brief 查询当前是否具备分配、目标、反馈和前馈全部有效输入。 */
+    bool isInputValid() const {
+        return this->distribution_valid && this->target_valid
+            && this->feedback_valid && this->feedforward_valid;
+    }
+
 private:
     uint8_t actuator_num = 0;        /**< 有效执行器数量 */
     uint8_t dof_num = 0;             /**< 有效广义力自由度 */
@@ -182,6 +215,11 @@ private:
     float inverse_dt = 1000.0f;      /**< 控制周期倒数，1/s */
     float velocity_filter_alpha = 0.9f;              /**< 速度滤波旧值权重 */
     float velocity_filter_weight = 1.0f - 0.9f;      /**< 速度滤波新值权重 */
+    float saturation_scale = 1.0f;                    /**< 四轮共同力矩缩放系数 */
+    bool distribution_valid = false;                  /**< 分配矩阵输入有效 */
+    bool target_valid = false;                        /**< 广义力目标输入有效 */
+    bool feedback_valid = false;                      /**< 位置/速度反馈输入有效 */
+    bool feedforward_valid = true;                    /**< 前馈力矩输入有效 */
 
     /** @brief 初始化时复制的执行器参数。 */
     ForceActuatorParam param[ALG_FORCE_ACTUATOR_MAX] {};

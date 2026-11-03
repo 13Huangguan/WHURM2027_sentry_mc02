@@ -1,5 +1,5 @@
 /**
- * @file alg_motion_compensation.hpp
+ * @file alg_slip_compensation1.hpp
  * @brief 四轮全向底盘运动估计与目标速度补偿接口。
  * @copyright WHU-LuojiaFox (c) 2026
  *
@@ -101,8 +101,11 @@ struct Measurement {
     /** @brief 本周期 Yaw 角速度，rad/s。 */
     float yaw_rate_rad_s = 0.0f;
 
-    /** @brief 轮半径，m；用于计算旋转产生的轮缘线速度。 */
-    float wheel_radius_m = 0.0f;
+    /**
+     * @brief 轮心到车体旋转中心的距离，m。
+     * @note 用于计算纯旋转产生的轮缘切向速度 D*wz。
+     */
+    float wheel_center_distance_m = 0.0f;
 
     /** @brief 底盘坐标系 x 轴加速度，m/s²，已去除重力。 */
     float acceleration_x_mps2 = 0.0f;

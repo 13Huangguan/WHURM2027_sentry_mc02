@@ -153,6 +153,90 @@ inline arm_status inverse(View* scratch, View* output) {
     return arm_mat_inverse_f32(scratch, output);
 }
 
+/**
+ * @brief 使用双精度高斯消元计算矩阵秩。
+ * @param input 输入矩阵视图。
+ * @param scratch 至少包含 rows * scratch_columns 个双精度元素的工作区。
+ * @param scratch_columns 工作区每行跨度，不得小于矩阵列数。
+ * @param output 输出秩。
+ * @return 参数或工作区尺寸有效时返回成功。
+ */
+inline arm_status rank(
+    const View* input,
+    double* scratch,
+    uint16_t scratch_columns,
+    uint8_t* output
+) {
+    if (output != nullptr) {
+        *output = 0U;
+    }
+    if (input == nullptr || input->pData == nullptr
+        || output == nullptr || scratch == nullptr) {
+        return ARM_MATH_ARGUMENT_ERROR;
+    }
+    if (input->numRows == 0U || input->numCols == 0U
+        || scratch_columns < input->numCols) {
+        return ARM_MATH_SIZE_MISMATCH;
+    }
+
+    std::fill_n(
+        scratch,
+        static_cast<size_t>(input->numRows) * scratch_columns,
+        0.0
+    );
+    for (uint16_t row = 0U; row < input->numRows; ++row) {
+        for (uint16_t column = 0U; column < input->numCols; ++column) {
+            scratch[row * scratch_columns + column] =
+                static_cast<double>(input->pData[row * input->numCols + column]);
+        }
+    }
+
+    uint16_t pivot_row = 0U;
+    for (uint16_t column = 0U;
+         column < input->numCols && pivot_row < input->numRows;
+         ++column) {
+        uint16_t pivot = pivot_row;
+        for (uint16_t row = pivot_row + 1U; row < input->numRows; ++row) {
+            if (std::fabs(scratch[row * scratch_columns + column])
+                > std::fabs(scratch[pivot * scratch_columns + column])) {
+                pivot = row;
+            }
+        }
+        if (std::fabs(scratch[pivot * scratch_columns + column]) < 1.0e-9) {
+            continue;
+        }
+        if (pivot != pivot_row) {
+            for (uint16_t item = column; item < input->numCols; ++item) {
+                const double temporary =
+                    scratch[pivot_row * scratch_columns + item];
+                scratch[pivot_row * scratch_columns + item] =
+                    scratch[pivot * scratch_columns + item];
+                scratch[pivot * scratch_columns + item] = temporary;
+            }
+        }
+
+        const double divisor =
+            scratch[pivot_row * scratch_columns + column];
+        for (uint16_t item = column; item < input->numCols; ++item) {
+            scratch[pivot_row * scratch_columns + item] /= divisor;
+        }
+        for (uint16_t row = 0U; row < input->numRows; ++row) {
+            if (row == pivot_row) {
+                continue;
+            }
+            const double factor = scratch[row * scratch_columns + column];
+            for (uint16_t item = column; item < input->numCols; ++item) {
+                scratch[row * scratch_columns + item] -=
+                    factor * scratch[pivot_row * scratch_columns + item];
+            }
+        }
+        ++pivot_row;
+    }
+
+    *output = static_cast<uint8_t>(pivot_row);
+    return ARM_MATH_SUCCESS;
+}
+
 template<int ROWS, int COLS>
 class Matrix {
     static_assert(ROWS > 0 && COLS > 0, "Matrix dimensions must be positive.");
@@ -332,6 +416,20 @@ template<int DIM>
 arm_status inverse(const Matrix<DIM, DIM>& input, Matrix<DIM, DIM>& output) {
     Matrix<DIM, DIM> scratch(input);
     return inverse(&scratch.arm_mat, &output.arm_mat);
+}
+
+/** @brief 计算固定尺寸矩阵的秩。 */
+template<int ROWS, int COLS>
+arm_status rank(const Matrix<ROWS, COLS>& input, uint8_t* output) {
+    double scratch[ROWS * COLS];
+    return rank(&input.arm_mat, scratch, COLS, output);
+}
+
+/** @brief 判断固定尺寸矩阵是否行满秩。 */
+template<int ROWS, int COLS>
+bool isFullRowRank(const Matrix<ROWS, COLS>& input) {
+    uint8_t value = 0U;
+    return rank(input, &value) == ARM_MATH_SUCCESS && value == ROWS;
 }
 
 Matrix<3, 3> hat(const Matrix<3, 1>& vector);

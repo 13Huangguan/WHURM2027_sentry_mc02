@@ -152,6 +152,8 @@ Team JiaoLong-SJTU / Spoon Guan 的署名和 MIT 许可证（同目录 `LICENSE`
   保留调用者输入，奇异矩阵返回 `ARM_MATH_SINGULAR`。
 - `matrix::View`：借用连续行优先数组的运行时矩阵视图，不分配内存、不复制数据。
   乘法和转置的输出不能与输入重叠；逆运算的输入是会被 CMSIS 修改的临时缓冲。
+- `matrix::rank()`：使用调用方提供的双精度工作区执行高斯消元；固定尺寸矩阵可直接
+  `matrix::rank(matrix, &value)`，需要预先检查行满秩时使用 `matrix::isFullRowRank()`。
 - Kalman/EKF 共用创新协方差和增益计算。初始化集中分配一块缓冲，重新初始化会释放旧缓冲；
   更新阶段不分配内存。临时缓冲按状态和测量维度的最大值分配，支持测量维度大于状态维度。
   矩阵运算失败时保留最近发布的输出，并通过 `mat_status` 报告失败；调用方应检查状态。

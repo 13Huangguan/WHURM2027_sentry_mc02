@@ -8,7 +8,7 @@
 
 #include "alg_force.hpp"
 #include "alg_gravity_compensation.hpp"
-#include "alg_motion_compensation.hpp"
+#include "alg_slip_compensation1.hpp"
 #include "alg_pid.h"
 #include "chassis_command.hpp"
 #include "chassis_config.hpp"

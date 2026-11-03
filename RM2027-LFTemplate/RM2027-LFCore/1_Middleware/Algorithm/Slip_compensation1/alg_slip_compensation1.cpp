@@ -1,10 +1,10 @@
 /**
- * @file alg_motion_compensation.cpp
+ * @file alg_slip_compensation1.cpp
  * @brief 四轮全向底盘运动估计与目标速度补偿实现。
  * @copyright WHU-LuojiaFox (c) 2026
  */
 
-#include "alg_motion_compensation.hpp"
+#include "alg_slip_compensation1.hpp"
 
 #include <cmath>
 
@@ -424,8 +424,8 @@ void OmniMotionCompensator::updateSlipDetection(
         || !std::isfinite(measurement.acceleration_y_mps2)
         || !std::isfinite(measurement.yaw_rad)
         || !std::isfinite(measurement.yaw_rate_rad_s)
-        || !std::isfinite(measurement.wheel_radius_m)
-        || measurement.wheel_radius_m <= 0.0f
+        || !std::isfinite(measurement.wheel_center_distance_m)
+        || measurement.wheel_center_distance_m <= 0.0f
         || !std::isfinite(predicted_vx_mps)
         || !std::isfinite(predicted_vy_mps)) {
         resetSlipState();
@@ -455,7 +455,8 @@ void OmniMotionCompensator::updateSlipDetection(
             sin_yaw * kWheelBaseX[wheel] + cos_yaw * kWheelBaseY[wheel];
         const float expected_wheel_speed =
             row_x * predicted_vx_mps + row_y * predicted_vy_mps
-            - measurement.wheel_radius_m * measurement.yaw_rate_rad_s;
+            - measurement.wheel_center_distance_m
+                * measurement.yaw_rate_rad_s;
         const float actual_wheel_speed =
             measurement.wheel_linear_velocity_mps[wheel];
         const float residual = actual_wheel_speed - expected_wheel_speed;
